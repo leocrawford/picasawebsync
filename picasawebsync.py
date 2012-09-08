@@ -12,14 +12,14 @@ import argparse
 # Class to store details of an album
 
 class Albums:
-    def __init__(self, rootDir):
-        self.albums = Albums.scanFileSystem(rootDir)
+    def __init__(self, rootDir, albumNaming):
+        self.albums = Albums.scanFileSystem(rootDir, albumNaming)
     # walk the directory tree populating the list of files we have locally
     @staticmethod
-    def scanFileSystem(rootDir):
+    def scanFileSystem(rootDir, albumNaming):
         fileAlbums = {}
         for dirName,subdirList,fileList in os.walk( rootDir ) :
-            albumName = convertDirToAlbum("{0}~{1} ({0})", rootDir,  dirName)
+            albumName = convertDirToAlbum(albumNaming, rootDir,  dirName)
             # have we already seen this album? If so append our path to it's list
             if albumName in fileAlbums:
                 album = fileAlbums[album.getAlbumName()]
@@ -137,6 +137,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("username", help="Your picassaweb username")
 parser.add_argument("password", help="Your picassaweb password")
 parser.add_argument("directory",  help="The local directory to copy from")
+parser.add_argument("-n","--naming", default="{0}~{1} ({0})",  help="Expression to convert directory names to web album names. Formed as a ~ seperated list of substitution strings, "
+"so if a sub directory is in the root scanning directory then the first slement will be used, if there is a directory between them the second, etc. If the directory path is longer than the "
+"list then the last element is used (and thus the path is flattened)")
 args = parser.parse_args()
 
 gd_client = gdata.photos.service.PhotosService()
@@ -146,7 +149,9 @@ gd_client.source = 'api-sample-google-com'
 gd_client.ProgrammaticLogin()
 
 rootDir = args.directory # set the directory you want to start from
-albums = Albums(rootDir)
+albumNaming = args.naming
+
+albums = Albums(rootDir, albumNaming)
 albums.scanWebAlbums()
 albums.uploadMissingAlbumsAndFiles()
 
