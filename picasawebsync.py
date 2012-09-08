@@ -8,8 +8,11 @@ import re
 import pprint
 import sys
 import argparse
+import mimetypes
 
 # Class to store details of an album
+
+supportedImageFormats = frozenset(["image/bmp", "image/gif",  "image/jpeg",  "image/png"])
 
 class Albums:
     def __init__(self, rootDir, albumNaming):
@@ -68,9 +71,14 @@ class Albums:
                     else:
                         subAlbum = album.webAlbum[subAlbumCount]
                     try:
-                        photo = gd_client.InsertPhotoSimple(subAlbum.album, file.name, 'synced from '+file.path, file.path, content_type='image/jpeg')
-                        print "uploaded "+file.path
-                        subAlbum.numberFiles = subAlbum.numberFiles + 1
+                        mimeType = mimetypes.guess_type(file.path)[0]
+                        print mimeType
+                        if mimeType in supportedImageFormats:
+                            photo = gd_client.InsertPhotoSimple(subAlbum.album, file.name, 'synced from '+file.path, file.path, content_type=mimeType)
+                            print "uploaded "+file.path
+                            subAlbum.numberFiles = subAlbum.numberFiles + 1
+                        else:
+                            print "Skipped %s (because can't upload file of type %s)." % (file.path, mimeType)
                     except GooglePhotosException:
                         print "Skipping upload of %s due to exception" % file.path
 
