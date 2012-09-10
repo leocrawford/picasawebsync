@@ -113,20 +113,26 @@ class AlbumEntry:
                 print 'Created album %s to sync %s' % (subAlbum.album.title.text, self.rootPath)
             else:
                 subAlbum = self.webAlbum[self.webAlbumIndex]
-            try:
-                mimeType = mimetypes.guess_type(file.path)[0]
-                if mimeType in supportedImageFormats:
-                    photo = gd_client.InsertPhotoSimple(subAlbum.album, file.name, 'synced from '+file.path, file.path, content_type=mimeType)
-                    print "uploaded "+file.path
-                    subAlbum.numberFiles = subAlbum.numberFiles + 1
-                else:
-                    print "Skipped %s (because can't upload file of type %s)." % (file.path, mimeType)
-            except GooglePhotosException:
-                print "Skipping upload of %s due to exception" % file.path
+            photo = self.upload2(subAlbum, file,  remoteLevel)    
         else:
-            print "Skipped uplaod of %s as not instructed to upload" % file.path
-
-
+            print "Skipped upload of %s as not instructed to upload" % file.path
+    def upload2(self,  subAlbum,  file,  remoteLevel):
+        try:
+            mimeType = mimetypes.guess_type(file.path)[0]
+            if mimeType in supportedImageFormats:
+                metadata = gdata.photos.PhotoEntry()
+                metadata.title=atom.Title(text=file.name)
+                metadata.summary = atom.Summary(text='synced from xxx'+file.path, summary_type='text')
+                metadata.checksum= gdata.photos.Checksum("XXX")
+                photo = gd_client.InsertPhoto(subAlbum.album, metadata, file.path, mimeType)
+                print "uploaded "+file.path
+                subAlbum.numberFiles = subAlbum.numberFiles + 1
+                return photo
+            else:
+                print "Skipped %s (because can't upload file of type %s)." % (file.path, mimeType)
+        except GooglePhotosException:
+            print "Skipping upload of %s due to exception" % file.path 
+    
 # Class to store web album details
 
 class WebAlbum:
