@@ -59,37 +59,18 @@ class Albums:
                 print "skipping web only album "+webAlbum.title.text 
             print 'Checked: %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
     def uploadMissingAlbumsAndFiles(self,  remoteLevel, metadataLevel):
-        if(remoteLevel >= 1):
-            for album in self.albums.itervalues():
-                subAlbumCount = 0;
-                for file in album.entries.itervalues():
-                    if file.isLocal: 
-                        if file.isWeb:
-                            print "Nothing to do with %s as local and remote" % file.path
-                        else:
-                            while (subAlbumCount<len(album.webAlbum) and album.webAlbum[subAlbumCount].numberFiles >= 999):
-                                subAlbumCount = subAlbumCount + 1                        
-                            if subAlbumCount>=len(album.webAlbum):
-                                subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(album.getAlbumName(), subAlbumCount), access='private', summary='synced from '+album.rootPath), 0)
-                                album.webAlbum.append(subAlbum)
-                                print 'Created album %s to sync %s' % (subAlbum.album.title.text, album.rootPath)
-                            else:
-                                subAlbum = album.webAlbum[subAlbumCount]
-                            try:
-                                mimeType = mimetypes.guess_type(file.path)[0]
-                                if mimeType in supportedImageFormats:
-                                    photo = gd_client.InsertPhotoSimple(subAlbum.album, file.name, 'synced from '+file.path, file.path, content_type=mimeType)
-                                    print "uploaded "+file.path
-                                    subAlbum.numberFiles = subAlbum.numberFiles + 1
-                                else:
-                                    print "Skipped %s (because can't upload file of type %s)." % (file.path, mimeType)
-                            except GooglePhotosException:
-                                print "Skipping upload of %s due to exception" % file.path
+        for album in self.albums.itervalues():
+            for file in album.entries.itervalues():
+                if file.isLocal: 
+                    if file.isWeb:
+                        print "Nothing to do with %s as local and remote" % file.path
                     else:
-                        if file.isWeb:
-                            print "Download to local not yet supported for %s" % file.path
-                        else:
-                            print "There is no way a file can be neitehr remote or local. Error! %s" % file.path
+                        album.upload(file, remoteLevel)
+                else:
+                    if file.isWeb:
+                        print "Download to local not yet supported for %s" % file.path
+                    else:
+                        print "There is no way a file can be neither remote or local. Error! %s" % file.path
                             
 
 
@@ -111,6 +92,7 @@ class AlbumEntry:
         self.albumName = albumName
         self.entries = {}
         self.webAlbum = []
+        self.webAlbumIndex = 0
     def __str__(self):
         return (self.albumName+" starting at "+rootPath+" total "+str(len(self.entries))+" entries "+\
             ["exists","doesn't exist"][not self.webAlbum]+" online")
@@ -121,6 +103,29 @@ class AlbumEntry:
             return "Home"
     def getPathsAsString(self):
         return ",".join(self.paths)
+    def upload(self, file,  remoteLevel):
+        if(remoteLevel >= 1):
+            while (self.webAlbumIndex<len(self.webAlbum) and self.webAlbum[self.webAlbumIndex].numberFiles >= 999):
+                self.webAlbumIndex = self.webAlbumIndex + 1                        
+            if self.webAlbumIndex>=len(self.webAlbum):
+                subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.getAlbumName(), self.webAlbumIndex), access='private', summary='synced from '+self.rootPath), 0)
+                self.webAlbum.append(subAlbum)
+                print 'Created album %s to sync %s' % (subAlbum.album.title.text, self.rootPath)
+            else:
+                subAlbum = self.webAlbum[self.webAlbumIndex]
+            try:
+                mimeType = mimetypes.guess_type(file.path)[0]
+                if mimeType in supportedImageFormats:
+                    photo = gd_client.InsertPhotoSimple(subAlbum.album, file.name, 'synced from '+file.path, file.path, content_type=mimeType)
+                    print "uploaded "+file.path
+                    subAlbum.numberFiles = subAlbum.numberFiles + 1
+                else:
+                    print "Skipped %s (because can't upload file of type %s)." % (file.path, mimeType)
+            except GooglePhotosException:
+                print "Skipping upload of %s due to exception" % file.path
+        else:
+            print "Skipped uplaod of %s as not instructed to upload" % file.path
+
 
 # Class to store web album details
 
