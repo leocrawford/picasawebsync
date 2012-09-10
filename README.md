@@ -15,3 +15,14 @@ Soon to be supported:
 * Two way sync
 * Hashing to ensure that changed files are picked up
 * Optional deletion (local and web)
+
+Notes
+--------
+
+An upload can be one of:
+
+upload: "none", "upload", "replace", "delete", "overwrite"
+metadata: "none", "upload", "replace", "delete", "overwrite"
+
+check-mechnism: Filename, Date, Hash
+
