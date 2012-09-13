@@ -10,6 +10,7 @@ import sys
 import argparse
 import mimetypes
 import hashlib
+import urllib
 
 # Class to store details of an album
 
@@ -52,12 +53,12 @@ class Albums:
                 photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
                 foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
                 for photo in photos.entry:
-                    # if photo.checksum.text:
-                        # print "Found checksum %s" % photo.checksum.text
-                    if photo.title.text in foundAlbum.entries: 
-                        foundAlbum.entries[photo.title.text].isWeb = True
+                    photoTitle=urllib.unquote(photo.title.text)
+                    if photoTitle in foundAlbum.entries: 
+                        foundAlbum.entries[photoTitle].webReference = photo
+                        foundAlbum.entries[photoTitle].remoteHash = photo.checksum.text
                     else:
-                        print "skipping web only photo "+photo.title.text
+                        print "skipping web only photo %s from [%s]"% (photoTitle, ", ".join(foundAlbum.entries))
             else:
                 print "skipping web only album "+webAlbum.title.text 
             print 'Checked: %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
@@ -65,12 +66,17 @@ class Albums:
         for album in self.albums.itervalues():
             for file in album.entries.itervalues():
                 if file.isLocal: 
-                    if file.isWeb:
-                        print "Nothing to do with %s as local and remote" % file.path
+                    if file.isWeb():
+                        if file.changed():
+                            print "Replacing %s as local and remote and chnage status is %s" % (file.path, file.changed())
+                            gd_client.Delete(file.webReference)
+                            album.upload(file, remoteLevel)
+                        else:
+                            print "Nothing to do with %s as local and remote and chnage status is %s" % (file.path, file.changed())
                     else:
                         album.upload(file, remoteLevel)
                 else:
-                    if file.isWeb:
+                    if file.isWeb():
                         print "Download to local not yet supported for %s" % file.path
                     else:
                         print "There is no way a file can be neither remote or local. Error! %s" % file.path
@@ -124,25 +130,17 @@ class AlbumEntry:
             mimeType = mimetypes.guess_type(file.path)[0]
             if mimeType in supportedImageFormats:
                 metadata = gdata.photos.PhotoEntry()
-                metadata.title=atom.Title(text=file.name)
+                metadata.title=atom.Title(text=urllib.quote_plus(file.name)) # have to quote as certain charecters, e.g. / seem to break it
                 metadata.summary = atom.Summary(text='synced from '+file.path, summary_type='text')
-                md5=AlbumEntry.md5sum(file.path)
-                metadata.checksum= gdata.photos.Checksum(text=md5)
+                metadata.checksum= gdata.photos.Checksum(text=file.getLocalHash())
                 photo = gd_client.InsertPhoto(subAlbum.album, metadata, file.path, mimeType)
-                print "uploaded "+file.path
+                print "uploaded %s (as %s)" % (file.name, urllib.quote_plus(file.name))
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
                 return photo
             else:
                 print "Skipped %s (because can't upload file of type %s)." % (file.path, mimeType)
         except GooglePhotosException:
             print "Skipping upload of %s due to exception" % file.path 
-    @staticmethod 
-    def md5sum(filename):
-        md5 = hashlib.md5()
-        with open(filename,'rb') as f: 
-            for chunk in iter(lambda: f.read(128*md5.block_size), b''): 
-                 md5.update(chunk)
-        return md5.hexdigest()
     
 # Class to store web album details
 
@@ -158,9 +156,28 @@ class FileEntry:
     def __init__(self, name, path,  isWeb,  isLocal):
         self.name = name
         self.path=path
-        self.isWeb=isWeb
         self.isLocal=isLocal
-    
+        self.localHash=None
+        self.remoteHash=None
+        self.webReference=None
+    def getLocalHash(self):
+        if not(self.localHash):
+            md5 = hashlib.md5()
+            with open(self.path,'rb') as f: 
+                for chunk in iter(lambda: f.read(128*md5.block_size), b''): 
+                     md5.update(chunk)
+            self.localHash = md5.hexdigest()
+        return self.localHash
+    def changed(self):
+        if self.isLocal and self.isWeb():
+            if self.remoteHash:
+                return self.remoteHash != self.getLocalHash()
+            else:
+                return None
+        else:
+            return True
+    def isWeb(self):
+        return self.webReference != None
     
 # Method to translate directory name to an album name   
     
