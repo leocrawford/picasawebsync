@@ -9,6 +9,7 @@ import pprint
 import sys
 import argparse
 import mimetypes
+import hashlib
 
 # Class to store details of an album
 
@@ -51,6 +52,8 @@ class Albums:
                 photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
                 foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
                 for photo in photos.entry:
+                    # if photo.checksum.text:
+                        # print "Found checksum %s" % photo.checksum.text
                     if photo.title.text in foundAlbum.entries: 
                         foundAlbum.entries[photo.title.text].isWeb = True
                     else:
@@ -122,8 +125,9 @@ class AlbumEntry:
             if mimeType in supportedImageFormats:
                 metadata = gdata.photos.PhotoEntry()
                 metadata.title=atom.Title(text=file.name)
-                metadata.summary = atom.Summary(text='synced from xxx'+file.path, summary_type='text')
-                metadata.checksum= gdata.photos.Checksum("XXX")
+                metadata.summary = atom.Summary(text='synced from '+file.path, summary_type='text')
+                md5=AlbumEntry.md5sum(file.path)
+                metadata.checksum= gdata.photos.Checksum(text=md5)
                 photo = gd_client.InsertPhoto(subAlbum.album, metadata, file.path, mimeType)
                 print "uploaded "+file.path
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
@@ -132,6 +136,13 @@ class AlbumEntry:
                 print "Skipped %s (because can't upload file of type %s)." % (file.path, mimeType)
         except GooglePhotosException:
             print "Skipping upload of %s due to exception" % file.path 
+    @staticmethod 
+    def md5sum(filename):
+        md5 = hashlib.md5()
+        with open(filename,'rb') as f: 
+            for chunk in iter(lambda: f.read(128*md5.block_size), b''): 
+                 md5.update(chunk)
+        return md5.hexdigest()
     
 # Class to store web album details
 
