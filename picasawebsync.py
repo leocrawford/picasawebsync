@@ -11,6 +11,7 @@ import argparse
 import mimetypes
 import hashlib
 import urllib
+import time
 
 # Class to store details of an album
 
@@ -55,24 +56,28 @@ class Albums:
                 for photo in photos.entry:
                     photoTitle=urllib.unquote(photo.title.text)
                     if photoTitle in foundAlbum.entries: 
-                        foundAlbum.entries[photoTitle].webReference = photo
-                        foundAlbum.entries[photoTitle].remoteHash = photo.checksum.text
+                        entry = foundAlbum.entries[photoTitle]
+                        entry.webReference = photo
+                        entry.remoteHash = photo.checksum.text
+                        entry.remoteDate = photo.exif.time.datetime()
+                        print "XXX-->%s" % entry.remoteDate 
                     else:
-                        print "skipping web only photo %s from [%s]"% (photoTitle, ", ".join(foundAlbum.entries))
+                        print "skipping web only photo %s" % photoTitle
             else:
                 print "skipping web only album "+webAlbum.title.text 
             print 'Checked: %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
-    def uploadMissingAlbumsAndFiles(self,  remoteLevel, metadataLevel):
+    def uploadMissingAlbumsAndFiles(self,  remoteLevel, metadataLevel,  compareattributes):
         for album in self.albums.itervalues():
             for file in album.entries.itervalues():
                 if file.isLocal: 
                     if file.isWeb():
-                        if file.changed():
-                            print "Replacing %s as local and remote and chnage status is %s" % (file.path, file.changed())
+                        changed = file.changed(compareattributes)
+                        if changed:
+                            print "Replacing %s as local and remote and change status is %s" % (file.path, changed)
                             gd_client.Delete(file.webReference)
                             album.upload(file, remoteLevel)
                         else:
-                            print "Nothing to do with %s as local and remote and chnage status is %s" % (file.path, file.changed())
+                            print "Nothing to do with %s as local and remote and change status is %s" % (file.path, file.changed())
                     else:
                         album.upload(file, remoteLevel)
                 else:
@@ -130,7 +135,7 @@ class AlbumEntry:
             mimeType = mimetypes.guess_type(file.path)[0]
             if mimeType in supportedImageFormats:
                 metadata = gdata.photos.PhotoEntry()
-                metadata.title=atom.Title(text=urllib.quote_plus(file.name)) # have to quote as certain charecters, e.g. / seem to break it
+                metadata.title=atom.Title(text=urllib.quote(file.name)) # have to quote as certain charecters, e.g. / seem to break it
                 metadata.summary = atom.Summary(text='synced from '+file.path, summary_type='text')
                 metadata.checksum= gdata.photos.Checksum(text=file.getLocalHash())
                 photo = gd_client.InsertPhoto(subAlbum.album, metadata, file.path, mimeType)
@@ -160,6 +165,7 @@ class FileEntry:
         self.localHash=None
         self.remoteHash=None
         self.webReference=None
+        self.remoteDate=None
     def getLocalHash(self):
         if not(self.localHash):
             md5 = hashlib.md5()
@@ -168,14 +174,21 @@ class FileEntry:
                      md5.update(chunk)
             self.localHash = md5.hexdigest()
         return self.localHash
-    def changed(self):
+    def getLocalDate(self):
+        return time.ctime(os.path.getmtime(self.path))
+    def changed(self, compareattributes):
         if self.isLocal and self.isWeb():
-            if self.remoteHash:
-                return self.remoteHash != self.getLocalHash()
-            else:
-                return None
-        else:
-            return True
+            if compareattributes & 2:
+                if self.remoteHash:
+                    return self.remoteHash != self.getLocalHash()
+                else:
+                    return None
+            if compareattributes & 1:
+                if self.remoteDate:
+                    return self.remoteDate != self.getLocalDate()
+                else:
+                    return None
+        return false
     def isWeb(self):
         return self.webReference != None
     
@@ -203,6 +216,7 @@ parser.add_argument("-n","--naming", default="{0}~{1} ({0})",  help="Expression 
 "list then the last element is used (and thus the path is flattened)")
 parser.add_argument("-r", "--remotelevel", type=convertImpactLevel, help="upload level %s" % list(activityLevels),  default="upload")
 parser.add_argument("-m", "--metadatalevel", type=convertImpactLevel, help="metadata level %s" % list(activityLevels),  default="upload")
+parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to indicate whether to use date (1) and hash (2) in addition to filename",  default=1)
 args = parser.parse_args()
 
 gd_client = gdata.photos.service.PhotosService()
@@ -216,7 +230,7 @@ albumNaming = args.naming
 
 albums = Albums(rootDir, albumNaming)
 albums.scanWebAlbums()
-albums.uploadMissingAlbumsAndFiles(args.remotelevel, args.metadatalevel)
+albums.uploadMissingAlbumsAndFiles(args.remotelevel, args.metadatalevel, args.compareattributes)
 
 
 exit(1)
