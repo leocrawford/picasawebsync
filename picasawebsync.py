@@ -13,6 +13,7 @@ import hashlib
 import urllib
 import time
 import datetime
+import urllib
 
 # Class to store details of an album
 
@@ -101,7 +102,7 @@ class Albums:
                         album.upload(file, remoteLevel)
                 else:
                     if file.isWeb():
-                        print "Download to local not yet supported for %s" % file.path
+                        file.download()
                     else:
                         print "There is no way a file can be neither remote or local. Error! %s %s %s" % (file.path,  file.isLocal, file.isWeb())
                             
@@ -219,6 +220,12 @@ class FileEntry:
         return Comparisons.SAME
     def isWeb(self):
         return self.webReference != None
+    def download(self):
+        url = self.webReference.content.src
+        "Download the data at URL to the current directory."
+        basename = url[url.rindex('/') + 1:]  # Figure out a good name for the downloaded file.
+        print "Downloading %s" % (basename,)
+        urllib.urlretrieve(url, basename)
     
 # Method to translate directory name to an album name   
     
