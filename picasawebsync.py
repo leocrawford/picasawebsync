@@ -51,7 +51,7 @@ class Albums:
                 fullFilename = os.path.join(dirName, fname)
                 # figure out the filename relative to the root dir of the album (to ensure uniqeness) 
                 relFileName = re.sub("^/","", fullFilename[len(album.rootPath):])
-                fileEntry = FileEntry(relFileName, fullFilename,  False, True)
+                fileEntry = FileEntry(relFileName, fullFilename,  None, True)
                 album.entries[relFileName] = fileEntry
         print "Found "+str(len(fileAlbums))+" albums on the filesystem"
         return fileAlbums;
@@ -82,7 +82,7 @@ class Albums:
                 entry.remoteSize = int(photo.size.text)
                 # or photo.exif.time
             else:
-                fileEntry = FileEntry(photoTitle, None,  True, False)
+                fileEntry = FileEntry(photoTitle, None,  photo, False)
                 foundAlbum.entries[photoTitle] = fileEntry
     def uploadMissingAlbumsAndFiles(self,  remoteLevel, metadataLevel,  compareattributes):
         for album in self.albums.itervalues():
@@ -103,7 +103,7 @@ class Albums:
                     if file.isWeb():
                         print "Download to local not yet supported for %s" % file.path
                     else:
-                        print "There is no way a file can be neither remote or local. Error! %s" % file.path
+                        print "There is no way a file can be neither remote or local. Error! %s %s %s" % (file.path,  file.isLocal, file.isWeb())
                             
 
 
@@ -180,13 +180,13 @@ class WebAlbum:
 # Class to store details of an individual file
 
 class FileEntry:
-    def __init__(self, name, path,  isWeb,  isLocal):
+    def __init__(self, name, path,  webReference,  isLocal):
         self.name = name
         self.path=path
         self.isLocal=isLocal
         self.localHash=None
         self.remoteHash=None
-        self.webReference=None
+        self.webReference=webReference
         self.remoteDate=None
         self.remoteSize=None
     def getLocalHash(self):
