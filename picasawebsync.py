@@ -12,11 +12,21 @@ import mimetypes
 import hashlib
 import urllib
 import time
+import datetime
 
 # Class to store details of an album
 
 supportedImageFormats = frozenset(["image/bmp", "image/gif",  "image/jpeg",  "image/png"])
+
 activityLevels = ["none", "upload", "replace", "delete", "overwrite"]
+
+class Enum(set):
+    def __getattr__(self, name):
+        if name in self:
+            return name
+        raise AttributeError
+    
+Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN'])   
 
 class Albums:
     def __init__(self, rootDir, albumNaming):
@@ -59,8 +69,9 @@ class Albums:
                         entry = foundAlbum.entries[photoTitle]
                         entry.webReference = photo
                         entry.remoteHash = photo.checksum.text
-                        entry.remoteDate = photo.exif.time.datetime()
-                        print "XXX-->%s" % entry.remoteDate 
+                        entry.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",photo.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
+                        entry.remoteSize = int(photo.size.text)
+                        # or photo.exif.time
                     else:
                         print "skipping web only photo %s" % photoTitle
             else:
@@ -72,12 +83,13 @@ class Albums:
                 if file.isLocal: 
                     if file.isWeb():
                         changed = file.changed(compareattributes)
-                        if changed:
+                        # Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN']) 
+                        if changed == Comparisons.REMOTE_OLDER :
                             print "Replacing %s as local and remote and change status is %s" % (file.path, changed)
                             gd_client.Delete(file.webReference)
                             album.upload(file, remoteLevel)
-                        else:
-                            print "Nothing to do with %s as local and remote and change status is %s" % (file.path, file.changed())
+                        if changed == Comparisons.SAME or changed == Comparisons.UNKNOWN or changed == Comparisons.DIFFERENT:
+                            print "Nothing to do with %s as local and remote and change status is %s" % (file.path, changed)
                     else:
                         album.upload(file, remoteLevel)
                 else:
@@ -138,6 +150,8 @@ class AlbumEntry:
                 metadata.title=atom.Title(text=urllib.quote(file.name)) # have to quote as certain charecters, e.g. / seem to break it
                 metadata.summary = atom.Summary(text='synced from '+file.path, summary_type='text')
                 metadata.checksum= gdata.photos.Checksum(text=file.getLocalHash())
+                # timestamp = '%i' % int(time.time() * 1001)
+                # metadata.timestamp=gdata.photos.Timestamp(text=timestamp)
                 photo = gd_client.InsertPhoto(subAlbum.album, metadata, file.path, mimeType)
                 print "uploaded %s (as %s)" % (file.name, urllib.quote_plus(file.name))
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
@@ -166,6 +180,7 @@ class FileEntry:
         self.remoteHash=None
         self.webReference=None
         self.remoteDate=None
+        self.remoteSize=None
     def getLocalHash(self):
         if not(self.localHash):
             md5 = hashlib.md5()
@@ -175,20 +190,25 @@ class FileEntry:
             self.localHash = md5.hexdigest()
         return self.localHash
     def getLocalDate(self):
-        return time.ctime(os.path.getmtime(self.path))
+        return os.path.getmtime(self.path)
+    def getLocalSize(self):
+        return os.path.getsize(self.path)
     def changed(self, compareattributes):
         if self.isLocal and self.isWeb():
+            # filesize (1), date (2),  hash (4) 
+            if compareattributes & 1: 
+                if self.remoteSize != self.getLocalSize():
+                    return Comparisons.DIFFERENT
             if compareattributes & 2:
+                if self.remoteDate < self.getLocalDate() + 60:
+                    return Comparisons.REMOTE_OLDER            
+            if compareattributes & 4:                
                 if self.remoteHash:
-                    return self.remoteHash != self.getLocalHash()
+                    if self.remoteHash != self.getLocalHash():
+                        return Comparisons.DIFFERENT
                 else:
-                    return None
-            if compareattributes & 1:
-                if self.remoteDate:
-                    return self.remoteDate != self.getLocalDate()
-                else:
-                    return None
-        return false
+                    return Comparisons.UNKNOWN
+        return Comparisons.SAME
     def isWeb(self):
         return self.webReference != None
     
@@ -207,6 +227,8 @@ def convertImpactLevel(string):
     i = activityLevels.index(string)
     return i
 
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("username", help="Your picassaweb username")
 parser.add_argument("password", help="Your picassaweb password")
@@ -216,7 +238,10 @@ parser.add_argument("-n","--naming", default="{0}~{1} ({0})",  help="Expression 
 "list then the last element is used (and thus the path is flattened)")
 parser.add_argument("-r", "--remotelevel", type=convertImpactLevel, help="upload level %s" % list(activityLevels),  default="upload")
 parser.add_argument("-m", "--metadatalevel", type=convertImpactLevel, help="metadata level %s" % list(activityLevels),  default="upload")
-parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to indicate whether to use date (1) and hash (2) in addition to filename",  default=1)
+parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to indicate whether to use filesize (1), date (2),  hash (4) in addition to filename. "
+"These are applied in order from left to right with a difference returning immediately and a similarity passing on to the next check."
+"They work like chmod values, so add the values in brackets to switch on a check. Date uses a 60 second margin (to allow for different time stamp"
+"between google and your local machine, and can only identify a locally modified file not a remotely modified one. It is disabled by default",  default=5)
 args = parser.parse_args()
 
 gd_client = gdata.photos.service.PhotosService()
