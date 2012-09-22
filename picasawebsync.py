@@ -31,6 +31,7 @@ Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN'])
 class Albums:
     def __init__(self, rootDir, albumNaming):
         self.albums = Albums.scanFileSystem(rootDir, albumNaming)
+        self.rootDir = rootDir
     # walk the directory tree populating the list of files we have locally
     @staticmethod
     def scanFileSystem(rootDir, albumNaming):
@@ -61,22 +62,28 @@ class Albums:
             webAlbumTitle = Albums.flatten(webAlbum.title.text)
             if webAlbumTitle in self.albums:
                 foundAlbum = self.albums[webAlbumTitle]
-                photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
-                foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
-                for photo in photos.entry:
-                    photoTitle=urllib.unquote(photo.title.text)
-                    if photoTitle in foundAlbum.entries: 
-                        entry = foundAlbum.entries[photoTitle]
-                        entry.webReference = photo
-                        entry.remoteHash = photo.checksum.text
-                        entry.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",photo.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
-                        entry.remoteSize = int(photo.size.text)
-                        # or photo.exif.time
-                    else:
-                        print "skipping web only photo %s" % photoTitle
+                self.scanWebPhotos(foundAlbum, webAlbum)
             else:
-                print "skipping web only album "+webAlbum.title.text 
-            print 'Checked: %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
+                print "Adding web only album "+webAlbum.title.text 
+                album = AlbumEntry(os.path.join(rootDir, "downloaded", webAlbum.title.text),  webAlbum.title.text)
+                self.albums[webAlbum.title.text] = album
+                self.scanWebPhotos(album, webAlbum)
+            print 'Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
+    def scanWebPhotos(self, foundAlbum, webAlbum):
+        photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
+        foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
+        for photo in photos.entry:
+            photoTitle=urllib.unquote(photo.title.text)
+            if photoTitle in foundAlbum.entries: 
+                entry = foundAlbum.entries[photoTitle]
+                entry.webReference = photo
+                entry.remoteHash = photo.checksum.text
+                entry.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",photo.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
+                entry.remoteSize = int(photo.size.text)
+                # or photo.exif.time
+            else:
+                fileEntry = FileEntry(photoTitle, None,  True, False)
+                foundAlbum.entries[photoTitle] = fileEntry
     def uploadMissingAlbumsAndFiles(self,  remoteLevel, metadataLevel,  compareattributes):
         for album in self.albums.itervalues():
             for file in album.entries.itervalues():
@@ -146,6 +153,7 @@ class AlbumEntry:
         try:
             mimeType = mimetypes.guess_type(file.path)[0]
             if mimeType in supportedImageFormats:
+                print "Uploading %s (as %s).." % (file.name, urllib.quote_plus(file.name))
                 metadata = gdata.photos.PhotoEntry()
                 metadata.title=atom.Title(text=urllib.quote(file.name)) # have to quote as certain charecters, e.g. / seem to break it
                 metadata.summary = atom.Summary(text='synced from '+file.path, summary_type='text')
@@ -153,7 +161,7 @@ class AlbumEntry:
                 # timestamp = '%i' % int(time.time() * 1001)
                 # metadata.timestamp=gdata.photos.Timestamp(text=timestamp)
                 photo = gd_client.InsertPhoto(subAlbum.album, metadata, file.path, mimeType)
-                print "uploaded %s (as %s)" % (file.name, urllib.quote_plus(file.name))
+                # print "Done"
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
                 return photo
             else:

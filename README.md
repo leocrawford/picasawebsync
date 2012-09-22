@@ -9,12 +9,15 @@ Currently it supports:
 * Flattening (so that deep directroy hierarachies on the local filesystem are collapsed into a single web album)
 * Smart web album naming (so that you can choose which elements of the directory path you'd like to retain)
 * Large album support (so that directories with more than 1000 items are mapped to multiple sequenced web albums)
-* Hashing to ensure that changed files are picked up
+* Multi-layered approach to detecting file change, including timestamp, filesize and hash of file
+* User-id and password log-on
 
 Soon to be supported:
 
 * Two way sync
 * Optional deletion (local and web)
+* SUpport for browser based log-on so you don't need to tell the app your details
+* Install scripts
 
 Notes
 --------
@@ -24,5 +27,4 @@ An upload can be one of:
 upload: "none", "upload", "replace", "delete", "overwrite"
 metadata: "none", "upload", "replace", "delete", "overwrite"
 
-check-mechnism: Filename, Date, Hash
 
