@@ -19,15 +19,28 @@ import urllib
 
 supportedImageFormats = frozenset(["image/bmp", "image/gif",  "image/jpeg",  "image/png"])
 
-activityLevels = ["none", "upload", "replace", "delete", "overwrite"]
-
 class Enum(set):
     def __getattr__(self, name):
         if name in self:
             return name
         raise AttributeError
     
-Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN'])   
+Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN', 'LOCAL_ONLY', 'REMOTE_ONLY'])   
+Actions = Enum(['UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'])
+SelectedActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}
+
+#LOCAL_ONLY->Upload_local, Delete_local, Skip, Skip_report
+#REMOTE_ONLY->Download_remote, Delete_remote, Tag_remote, Skip, Skip_report
+#REMOTE_OLDER->Upload_local, Skip, Skip_report
+#DIFFERENT->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
+#SAME->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
+#UNKNOWN (No hash)->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
 
 class Albums:
     def __init__(self, rootDir, albumNaming):
@@ -52,7 +65,7 @@ class Albums:
                 fullFilename = os.path.join(dirName, fname)
                 # figure out the filename relative to the root dir of the album (to ensure uniqeness) 
                 relFileName = re.sub("^/","", fullFilename[len(album.rootPath):])
-                fileEntry = FileEntry(relFileName, fullFilename,  None, True)
+                fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
                 album.entries[relFileName] = fileEntry
         print "Found "+str(len(fileAlbums))+" albums on the filesystem"
         return fileAlbums;
@@ -83,31 +96,14 @@ class Albums:
                 entry.remoteSize = int(photo.size.text)
                 # or photo.exif.time
             else:
-                fileEntry = FileEntry(photoTitle, None,  photo, False)
+                fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                 foundAlbum.entries[photoTitle] = fileEntry
-    def uploadMissingAlbumsAndFiles(self,  remoteLevel, metadataLevel,  compareattributes):
+    def uploadMissingAlbumsAndFiles(self, compareattributes):
         for album in self.albums.itervalues():
             for file in album.entries.itervalues():
-                if file.isLocal: 
-                    if file.isWeb():
-                        changed = file.changed(compareattributes)
-                        # Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN']) 
-                        if changed == Comparisons.REMOTE_OLDER :
-                            print "Replacing %s as local and remote and change status is %s" % (file.path, changed)
-                            gd_client.Delete(file.webReference)
-                            album.upload(file, remoteLevel)
-                        if changed == Comparisons.SAME or changed == Comparisons.UNKNOWN or changed == Comparisons.DIFFERENT:
-                            print "Nothing to do with %s as local and remote and change status is %s" % (file.path, changed)
-                    else:
-                        album.upload(file, remoteLevel)
-                else:
-                    if file.isWeb():
-                        file.download()
-                    else:
-                        print "There is no way a file can be neither remote or local. Error! %s %s %s" % (file.path,  file.isLocal, file.isWeb())
-                            
-
-
+                changed = file.changed(compareattributes)
+                print "%s: %s->%s" % (file.name, changed,  SelectedActions[changed])
+                getattr(file, SelectedActions[changed].lower())()
     @staticmethod 
     def createAlbumName(name,  index):
         if index == 0:
@@ -137,38 +133,6 @@ class AlbumEntry:
             return "Home"
     def getPathsAsString(self):
         return ",".join(self.paths)
-    def upload(self, file,  remoteLevel):
-        if(remoteLevel >= 1):
-            while (self.webAlbumIndex<len(self.webAlbum) and self.webAlbum[self.webAlbumIndex].numberFiles >= 999):
-                self.webAlbumIndex = self.webAlbumIndex + 1                        
-            if self.webAlbumIndex>=len(self.webAlbum):
-                subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.getAlbumName(), self.webAlbumIndex), access='private', summary='synced from '+self.rootPath), 0)
-                self.webAlbum.append(subAlbum)
-                print 'Created album %s to sync %s' % (subAlbum.album.title.text, self.rootPath)
-            else:
-                subAlbum = self.webAlbum[self.webAlbumIndex]
-            photo = self.upload2(subAlbum, file,  remoteLevel)    
-        else:
-            print "Skipped upload of %s as not instructed to upload" % file.path
-    def upload2(self,  subAlbum,  file,  remoteLevel):
-        try:
-            mimeType = mimetypes.guess_type(file.path)[0]
-            if mimeType in supportedImageFormats:
-                print "Uploading %s (as %s).." % (file.name, urllib.quote_plus(file.name))
-                metadata = gdata.photos.PhotoEntry()
-                metadata.title=atom.Title(text=urllib.quote(file.name)) # have to quote as certain charecters, e.g. / seem to break it
-                metadata.summary = atom.Summary(text='synced from '+file.path, summary_type='text')
-                metadata.checksum= gdata.photos.Checksum(text=file.getLocalHash())
-                # timestamp = '%i' % int(time.time() * 1001)
-                # metadata.timestamp=gdata.photos.Timestamp(text=timestamp)
-                photo = gd_client.InsertPhoto(subAlbum.album, metadata, file.path, mimeType)
-                # print "Done"
-                subAlbum.numberFiles = subAlbum.numberFiles + 1
-                return photo
-            else:
-                print "Skipped %s (because can't upload file of type %s)." % (file.path, mimeType)
-        except GooglePhotosException:
-            print "Skipping upload of %s due to exception" % file.path 
     
 # Class to store web album details
 
@@ -181,7 +145,7 @@ class WebAlbum:
 # Class to store details of an individual file
 
 class FileEntry:
-    def __init__(self, name, path,  webReference,  isLocal):
+    def __init__(self, name, path,  webReference,  isLocal,  album):
         self.name = name
         self.path=path
         self.isLocal=isLocal
@@ -190,6 +154,7 @@ class FileEntry:
         self.webReference=webReference
         self.remoteDate=None
         self.remoteSize=None
+        self.album=album
     def getLocalHash(self):
         if not(self.localHash):
             md5 = hashlib.md5()
@@ -203,29 +168,77 @@ class FileEntry:
     def getLocalSize(self):
         return os.path.getsize(self.path)
     def changed(self, compareattributes):
-        if self.isLocal and self.isWeb():
+        if self.isLocal:
+            if self.isWeb():
             # filesize (2), date (1),  hash (4) 
-            if compareattributes & 1:
-                if self.remoteDate < self.getLocalDate() + 60:
-                    return Comparisons.REMOTE_OLDER              
-            if compareattributes & 2: 
-                if self.remoteSize != self.getLocalSize():
-                    return Comparisons.DIFFERENT        
-            if compareattributes & 4:                
-                if self.remoteHash:
-                    if self.remoteHash != self.getLocalHash():
-                        return Comparisons.DIFFERENT
-                else:
-                    return Comparisons.UNKNOWN
-        return Comparisons.SAME
+                if compareattributes & 1:
+                    if self.remoteDate < self.getLocalDate() + 60:
+                        return Comparisons.REMOTE_OLDER              
+                if compareattributes & 2: 
+                    if self.remoteSize != self.getLocalSize():
+                        return Comparisons.DIFFERENT        
+                if compareattributes & 4:                
+                    if self.remoteHash:
+                        if self.remoteHash != self.getLocalHash():
+                            return Comparisons.DIFFERENT
+                    else:
+                        return Comparisons.UNKNOWN
+                return Comparisons.SAME
+            else:
+                return Comparisons.LOCAL_ONLY
+        else:
+            return Comparisons.REMOTE_ONLY
     def isWeb(self):
         return self.webReference != None
-    def download(self):
+    # UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'
+    def delete_local(self):
+        print "Not implemented delete"
+    def silent(self):
+        None
+    def report(self):
+        print "Skipping %s" % self.name
+    def tag_remote(self):
+        print "Not implemented tag"
+    def replace_remote_with_local(self):
+        gd_client.Delete(self.webReference)
+        self.upload_local()
+    def update_remote_metadata(self):
+        print "Not implemented replace metadata"
+    def download_remote(self):
         url = self.webReference.content.src
         "Download the data at URL to the current directory."
         basename = url[url.rindex('/') + 1:]  # Figure out a good name for the downloaded file.
         print "Downloading %s" % (basename,)
         urllib.urlretrieve(url, basename)
+    def upload_local(self):
+        while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
+            self.album.webAlbumIndex = self.album.webAlbumIndex + 1                        
+        if self.album.webAlbumIndex>=len(self.album.webAlbum):
+            subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath), 0)
+            self.album.webAlbum.append(subAlbum)
+            print 'Created album %s to sync %s' % (subAlbum.album.title.text, self.album.rootPath)
+        else:
+            subAlbum = self.album.webAlbum[self.album.webAlbumIndex]
+        photo = self.upload2(subAlbum)    
+    def upload2(self,  subAlbum):
+        try:
+            mimeType = mimetypes.guess_type(self.path)[0]
+            if mimeType in supportedImageFormats:
+                print "Uploading %s (as %s).." % (self.name, urllib.quote_plus(self.name))
+                metadata = gdata.photos.PhotoEntry()
+                metadata.title=atom.Title(text=urllib.quote(self.name)) # have to quote as certain charecters, e.g. / seem to break it
+                metadata.summary = atom.Summary(text='synced from '+self.path, summary_type='text')
+                metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
+                # timestamp = '%i' % int(time.time() * 1001)
+                # metadata.timestamp=gdata.photos.Timestamp(text=timestamp)
+                photo = gd_client.InsertPhoto(subAlbum.album, metadata, self.path, mimeType)
+                # print "Done"
+                subAlbum.numberFiles = subAlbum.numberFiles + 1
+                return photo
+            else:
+                print "Skipped %s (because can't upload file of type %s)." % (self.path, mimeType)
+        except GooglePhotosException:
+            print "Skipping upload of %s due to exception" % self.path 
     
 # Method to translate directory name to an album name   
     
@@ -251,8 +264,7 @@ parser.add_argument("directory",  help="The local directory to copy from")
 parser.add_argument("-n","--naming", default="{0}~{1} ({0})",  help="Expression to convert directory names to web album names. Formed as a ~ seperated list of substitution strings, "
 "so if a sub directory is in the root scanning directory then the first slement will be used, if there is a directory between them the second, etc. If the directory path is longer than the "
 "list then the last element is used (and thus the path is flattened)")
-parser.add_argument("-r", "--remotelevel", type=convertImpactLevel, help="upload level %s" % list(activityLevels),  default="upload")
-parser.add_argument("-m", "--metadatalevel", type=convertImpactLevel, help="metadata level %s" % list(activityLevels),  default="upload")
+# parser.add_argument("-m", "--metadatalevel", type=convertImpactLevel, help="metadata level %s" % list(activityLevels),  default="upload")
 parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to indicate whether to use date (1), filesize (2), hash (4) in addition to filename. "
 "These are applied in order from left to right with a difference returning immediately and a similarity passing on to the next check."
 "They work like chmod values, so add the values in brackets to switch on a check. Date uses a 60 second margin (to allow for different time stamp"
@@ -270,7 +282,7 @@ albumNaming = args.naming
 
 albums = Albums(rootDir, albumNaming)
 albums.scanWebAlbums()
-albums.uploadMissingAlbumsAndFiles(args.remotelevel, args.metadatalevel, args.compareattributes)
+albums.uploadMissingAlbumsAndFiles(args.compareattributes)
 
 
 exit(1)
