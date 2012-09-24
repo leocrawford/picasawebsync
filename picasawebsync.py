@@ -204,13 +204,13 @@ class FileEntry:
         return os.path.getsize(self.path)
     def changed(self, compareattributes):
         if self.isLocal and self.isWeb():
-            # filesize (1), date (2),  hash (4) 
-            if compareattributes & 1: 
-                if self.remoteSize != self.getLocalSize():
-                    return Comparisons.DIFFERENT
-            if compareattributes & 2:
+            # filesize (2), date (1),  hash (4) 
+            if compareattributes & 1:
                 if self.remoteDate < self.getLocalDate() + 60:
-                    return Comparisons.REMOTE_OLDER            
+                    return Comparisons.REMOTE_OLDER              
+            if compareattributes & 2: 
+                if self.remoteSize != self.getLocalSize():
+                    return Comparisons.DIFFERENT        
             if compareattributes & 4:                
                 if self.remoteHash:
                     if self.remoteHash != self.getLocalHash():
@@ -253,7 +253,7 @@ parser.add_argument("-n","--naming", default="{0}~{1} ({0})",  help="Expression 
 "list then the last element is used (and thus the path is flattened)")
 parser.add_argument("-r", "--remotelevel", type=convertImpactLevel, help="upload level %s" % list(activityLevels),  default="upload")
 parser.add_argument("-m", "--metadatalevel", type=convertImpactLevel, help="metadata level %s" % list(activityLevels),  default="upload")
-parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to indicate whether to use filesize (1), date (2),  hash (4) in addition to filename. "
+parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to indicate whether to use date (1), filesize (2), hash (4) in addition to filename. "
 "These are applied in order from left to right with a difference returning immediately and a similarity passing on to the next check."
 "They work like chmod values, so add the values in brackets to switch on a check. Date uses a 60 second margin (to allow for different time stamp"
 "between google and your local machine, and can only identify a locally modified file not a remotely modified one. It is disabled by default",  default=5)

@@ -16,7 +16,7 @@ Soon to be supported:
 
 * Two way sync
 * Optional deletion (local and web)
-* SUpport for browser based log-on so you don't need to tell the app your details
+* Support for browser based log-on so you don't need to tell the app your details
 * Install scripts
 
 Notes
@@ -28,3 +28,9 @@ upload: "none", "upload", "replace", "delete", "overwrite"
 metadata: "none", "upload", "replace", "delete", "overwrite"
 
 
+LOCAL_ONLY->Upload_local, Delete_local, Skip, Skip_report
+REMOTE_ONLY->Download_remote, Delete_remote, Tag_remote, Skip, Skip_report
+REMOTE_OLDER->Upload_local, Skip, Skip_report
+DIFFERENT->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
+SAME->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
+UNKNOWN (No hash)->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
