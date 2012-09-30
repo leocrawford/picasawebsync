@@ -27,13 +27,15 @@ class Enum(set):
     
 Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN', 'LOCAL_ONLY', 'REMOTE_ONLY'])   
 Actions = Enum(['UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'])
-SelectedActions = {
+UploadOnlyActions = {
         Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
         Comparisons.DIFFERENT:Actions.REPORT, 
-        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  #SILENT, 
         Comparisons.UNKNOWN:Actions.REPORT, 
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
         Comparisons.REMOTE_ONLY:Actions.REPORT}
+DefaultActions = UploadOnlyActions
+SelectedActions = DefaultActions 
 
 #LOCAL_ONLY->Upload_local, Delete_local, Skip, Skip_report
 #REMOTE_ONLY->Download_remote, Delete_remote, Tag_remote, Skip, Skip_report
@@ -203,7 +205,8 @@ class FileEntry:
         gd_client.Delete(self.webReference)
         self.upload_local()
     def update_remote_metadata(self):
-        print "Not implemented replace metadata"
+        self.addMetadata(self.webReference)
+        self.webReference = gd_client.UpdatePhotoMetadata(self.webReference)
     def download_remote(self):
         url = self.webReference.content.src
         "Download the data at URL to the current directory."
@@ -227,18 +230,17 @@ class FileEntry:
                 print "Uploading %s (as %s).." % (self.name, urllib.quote_plus(self.name))
                 metadata = gdata.photos.PhotoEntry()
                 metadata.title=atom.Title(text=urllib.quote(self.name)) # have to quote as certain charecters, e.g. / seem to break it
-                metadata.summary = atom.Summary(text='synced from '+self.path, summary_type='text')
-                metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
-                # timestamp = '%i' % int(time.time() * 1001)
-                # metadata.timestamp=gdata.photos.Timestamp(text=timestamp)
+                self.addMetadata(metadata)
                 photo = gd_client.InsertPhoto(subAlbum.album, metadata, self.path, mimeType)
-                # print "Done"
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
                 return photo
             else:
                 print "Skipped %s (because can't upload file of type %s)." % (self.path, mimeType)
         except GooglePhotosException:
             print "Skipping upload of %s due to exception" % self.path 
+    def addMetadata(self, metadata):
+            metadata.summary = atom.Summary(text='synced from '+self.path, summary_type='text')
+            metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
     
 # Method to translate directory name to an album name   
     
