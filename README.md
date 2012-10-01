@@ -1,6 +1,6 @@
 # picasawebsync
 
-This python utility will allow you to sync local directories with picasaweb. It is very much in alpha state so please provdie feedback
+This python utility will allow you to sync local directories with picasaweb. It is very much in beta state so please provide feedback
 
 Currently it supports:
 

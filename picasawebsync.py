@@ -83,11 +83,13 @@ class Albums:
                 album = AlbumEntry(os.path.join(rootDir, "downloaded", webAlbum.title.text),  webAlbum.title.text)
                 self.albums[webAlbum.title.text] = album
                 self.scanWebPhotos(album, webAlbum)
-            print 'Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
+            if not self.verbose:
+                print 'Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
     def scanWebPhotos(self, foundAlbum, webAlbum):
         for attempt in range(3):
             try:
-                print "Trying %s attempt %s" % (webAlbum.GetPhotosUri(), attempt)     
+                if (not self.verbose) and (attempt > 0):
+                    print "Trying %s attempt %s" % (webAlbum.GetPhotosUri(), attempt)     
                 photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
             except:
                 continue
@@ -98,7 +100,7 @@ class Albums:
             exit(-1)
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
         for photo in photos.entry:
-            photoTitle=photo.title.text # urllib.unquote(photo.title.text)
+            photoTitle=urllib.unquote(photo.title.text)
             if photoTitle in foundAlbum.entries: 
                 entry = foundAlbum.entries[photoTitle]
                 entry.webReference = photo
@@ -114,7 +116,7 @@ class Albums:
             for file in album.entries.itervalues():
                 changed = file.changed(compareattributes)
                 if self.verbose:
-                    print "%s: %s->%s" % (file.name, changed,  mode[changed])
+                    print "%s: %s->%s" % (file.getFullName(), changed,  mode[changed])
                 if not test:
                     getattr(file, mode[changed].lower())(changed)
     @staticmethod 
@@ -168,6 +170,8 @@ class FileEntry:
         self.remoteDate=None
         self.remoteSize=None
         self.album=album
+    def getFullName(self):
+        return album.getAlbumName()+" "+name
     def getLocalHash(self):
         if not(self.localHash):
             md5 = hashlib.md5()
@@ -238,7 +242,7 @@ class FileEntry:
         try:
             mimeType = mimetypes.guess_type(self.path)[0]
             if mimeType in supportedImageFormats:
-                name = self.name # urllib.quote_plus(self.name)
+                name = urllib.quote_plus(self.name)
                 print "Uploading %s (as %s).." % (self.name, name)
                 metadata = gdata.photos.PhotoEntry()
                 metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
