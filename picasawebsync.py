@@ -34,13 +34,23 @@ UploadOnlyActions = {
         Comparisons.UNKNOWN:Actions.REPORT, 
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
         Comparisons.REMOTE_ONLY:Actions.REPORT}
-PassiveAction = {
+PassiveActions = {
         Comparisons.REMOTE_OLDER:Actions.REPORT, 
         Comparisons.DIFFERENT:Actions.REPORT, 
         Comparisons.SAME:Actions.SILENT, 
         Comparisons.UNKNOWN:Actions.REPORT, 
         Comparisons.LOCAL_ONLY:Actions.REPORT, 
         Comparisons.REMOTE_ONLY:Actions.REPORT}        
+RepairActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  #SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}
+modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'sync':PassiveActions,  'repairUpload':RepairActions}
+def convertMode(string):
+    return modes[string]
 
 class Albums:
     def __init__(self, rootDir, albumNaming, verbose):
@@ -86,18 +96,7 @@ class Albums:
             if not self.verbose:
                 print 'Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
     def scanWebPhotos(self, foundAlbum, webAlbum):
-        for attempt in range(3):
-            try:
-                if (not self.verbose) and (attempt > 0):
-                    print "Trying %s attempt %s" % (webAlbum.GetPhotosUri(), attempt)     
-                photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
-            except:
-                continue
-            else:
-                break
-        else:
-            print "Failed 3 times"
-            exit(-1)
+        photos = self.repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName)
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
         for photo in photos.entry:
             photoTitle=urllib.unquote(photo.title.text)
@@ -119,6 +118,19 @@ class Albums:
                     print "%s: %s->%s" % (file.getFullName(), changed,  mode[changed])
                 if not test:
                     getattr(file, mode[changed].lower())(changed)
+    def repeat(self,  function,  description):
+        for attempt in range(3):
+            try:
+                if (not self.verbose) and (attempt > 0):
+                    print "Trying %s attempt %s" % (description, attempt)     
+                return function()
+            except:
+                continue
+            else:
+                break
+        else:
+            print "Failed 3 times"
+            exit(-1)       
     @staticmethod 
     def createAlbumName(name,  index):
         if index == 0:
@@ -268,11 +280,6 @@ def convertDirToAlbum(form,  root,  name):
     return work
 
 # start of the program
-
-modes = {'upload':UploadOnlyActions, 'download':PassiveAction, 'report':PassiveAction, 'sync':PassiveAction}
-def convertMode(string):
-    return modes[string]
-
 
 
 parser = argparse.ArgumentParser()
