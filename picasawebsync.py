@@ -34,20 +34,19 @@ UploadOnlyActions = {
         Comparisons.UNKNOWN:Actions.REPORT, 
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
         Comparisons.REMOTE_ONLY:Actions.REPORT}
-DefaultActions = UploadOnlyActions
-SelectedActions = DefaultActions 
-
-#LOCAL_ONLY->Upload_local, Delete_local, Skip, Skip_report
-#REMOTE_ONLY->Download_remote, Delete_remote, Tag_remote, Skip, Skip_report
-#REMOTE_OLDER->Upload_local, Skip, Skip_report
-#DIFFERENT->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
-#SAME->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
-#UNKNOWN (No hash)->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
+PassiveAction = {
+        Comparisons.REMOTE_OLDER:Actions.REPORT, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.REPORT, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}        
 
 class Albums:
-    def __init__(self, rootDir, albumNaming):
+    def __init__(self, rootDir, albumNaming, verbose):
         self.albums = Albums.scanFileSystem(rootDir, albumNaming)
         self.rootDir = rootDir
+        self.verbose = verbose
     # walk the directory tree populating the list of files we have locally
     @staticmethod
     def scanFileSystem(rootDir, albumNaming):
@@ -80,16 +79,17 @@ class Albums:
                 foundAlbum = self.albums[webAlbumTitle]
                 self.scanWebPhotos(foundAlbum, webAlbum)
             else:
-                print "Adding web only album "+webAlbum.title.text 
+                # FIXME
                 album = AlbumEntry(os.path.join(rootDir, "downloaded", webAlbum.title.text),  webAlbum.title.text)
                 self.albums[webAlbum.title.text] = album
                 self.scanWebPhotos(album, webAlbum)
             print 'Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
     def scanWebPhotos(self, foundAlbum, webAlbum):
+        print "Trying %s" % webAlbum.GetPhotosUri()
         photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
         for photo in photos.entry:
-            photoTitle=urllib.unquote(photo.title.text)
+            photoTitle=photo.title.text # urllib.unquote(photo.title.text)
             if photoTitle in foundAlbum.entries: 
                 entry = foundAlbum.entries[photoTitle]
                 entry.webReference = photo
@@ -100,12 +100,14 @@ class Albums:
             else:
                 fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                 foundAlbum.entries[photoTitle] = fileEntry
-    def uploadMissingAlbumsAndFiles(self, compareattributes):
+    def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test):
         for album in self.albums.itervalues():
             for file in album.entries.itervalues():
                 changed = file.changed(compareattributes)
-                print "%s: %s->%s" % (file.name, changed,  SelectedActions[changed])
-                getattr(file, SelectedActions[changed].lower())()
+                if self.verbose:
+                    print "%s: %s->%s" % (file.name, changed,  mode[changed])
+                if not test:
+                    getattr(file, mode[changed].lower())(changed)
     @staticmethod 
     def createAlbumName(name,  index):
         if index == 0:
@@ -193,27 +195,27 @@ class FileEntry:
     def isWeb(self):
         return self.webReference != None
     # UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'
-    def delete_local(self):
+    def delete_local(self, event):
         print "Not implemented delete"
-    def silent(self):
+    def silent(self, event):
         None
-    def report(self):
-        print "Skipping %s" % self.name
-    def tag_remote(self):
+    def report(self, event):
+        print "Identified %s as %s - taking no action" % (self.name, event)
+    def tag_remote(self, event):
         print "Not implemented tag"
-    def replace_remote_with_local(self):
+    def replace_remote_with_local(self, event):
         gd_client.Delete(self.webReference)
         self.upload_local()
-    def update_remote_metadata(self):
+    def update_remote_metadata(self, event):
         self.addMetadata(self.webReference)
         self.webReference = gd_client.UpdatePhotoMetadata(self.webReference)
-    def download_remote(self):
+    def download_remote(self, event):
         url = self.webReference.content.src
         "Download the data at URL to the current directory."
         basename = url[url.rindex('/') + 1:]  # Figure out a good name for the downloaded file.
         print "Downloading %s" % (basename,)
         urllib.urlretrieve(url, basename)
-    def upload_local(self):
+    def upload_local(self, event):
         while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
             self.album.webAlbumIndex = self.album.webAlbumIndex + 1                        
         if self.album.webAlbumIndex>=len(self.album.webAlbum):
@@ -227,9 +229,10 @@ class FileEntry:
         try:
             mimeType = mimetypes.guess_type(self.path)[0]
             if mimeType in supportedImageFormats:
-                print "Uploading %s (as %s).." % (self.name, urllib.quote_plus(self.name))
+                name = self.name # urllib.quote_plus(self.name)
+                print "Uploading %s (as %s).." % (self.name, name)
                 metadata = gdata.photos.PhotoEntry()
-                metadata.title=atom.Title(text=urllib.quote(self.name)) # have to quote as certain charecters, e.g. / seem to break it
+                metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
                 self.addMetadata(metadata)
                 photo = gd_client.InsertPhoto(subAlbum.album, metadata, self.path, mimeType)
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
@@ -253,9 +256,9 @@ def convertDirToAlbum(form,  root,  name):
 
 # start of the program
 
-def convertImpactLevel(string):
-    i = activityLevels.index(string)
-    return i
+modes = {'upload':UploadOnlyActions, 'download':PassiveAction, 'report':PassiveAction, 'sync':PassiveAction}
+def convertMode(string):
+    return modes[string]
 
 
 
@@ -271,7 +274,11 @@ parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to
 "These are applied in order from left to right with a difference returning immediately and a similarity passing on to the next check."
 "They work like chmod values, so add the values in brackets to switch on a check. Date uses a 60 second margin (to allow for different time stamp"
 "between google and your local machine, and can only identify a locally modified file not a remotely modified one. It is disabled by default",  default=5)
+parser.add_argument("-v","--verbose", default=False,  action='store_true',  help="Increase verbosity")
+parser.add_argument("-t","--test", default=False,  action='store_true',  help="Don't actually run activities, but report what you would have done (you may want to enable verbose)")
+parser.add_argument("-m","--mode", type=convertMode, help="metadata level %s" % list(modes),  default="upload")
 args = parser.parse_args()
+
 
 gd_client = gdata.photos.service.PhotosService()
 gd_client.email = args.username # Set your Picasaweb e-mail address...
@@ -282,9 +289,9 @@ gd_client.ProgrammaticLogin()
 rootDir = args.directory # set the directory you want to start from
 albumNaming = args.naming
 
-albums = Albums(rootDir, albumNaming)
+albums = Albums(rootDir, albumNaming, args.verbose)
 albums.scanWebAlbums()
-albums.uploadMissingAlbumsAndFiles(args.compareattributes)
+albums.uploadMissingAlbumsAndFiles(args.compareattributes, args.mode, args.test)
 
 
 exit(1)
