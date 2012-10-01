@@ -78,7 +78,7 @@ class Albums:
                 relFileName = re.sub("^/","", fullFilename[len(album.rootPath):])
                 fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
                 album.entries[relFileName] = fileEntry
-        print "Found "+str(len(fileAlbums))+" albums on the filesystem"
+        print ("Found "+str(len(fileAlbums))+" albums on the filesystem")
         return fileAlbums;
     def scanWebAlbums(self):
         # walk the web album finding albums there
@@ -94,7 +94,7 @@ class Albums:
                 self.albums[webAlbum.title.text] = album
                 self.scanWebPhotos(album, webAlbum)
             if not self.verbose:
-                print 'Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
+                print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
     def scanWebPhotos(self, foundAlbum, webAlbum):
         photos = self.repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName)
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
@@ -115,21 +115,21 @@ class Albums:
             for file in album.entries.itervalues():
                 changed = file.changed(compareattributes)
                 if self.verbose:
-                    print "%s: %s->%s" % (file.getFullName(), changed,  mode[changed])
+                    print ("%s: %s->%s" % (file.getFullName(), changed,  mode[changed]))
                 if not test:
                     getattr(file, mode[changed].lower())(changed)
     def repeat(self,  function,  description):
         for attempt in range(3):
             try:
                 if (not self.verbose) and (attempt > 0):
-                    print "Trying %s attempt %s" % (description, attempt)     
+                    print ("Trying %s attempt %s" % (description, attempt) )    
                 return function()
             except:
                 continue
             else:
                 break
         else:
-            print "Failed 3 times"
+            print ("Failed 3 times")
             exit(-1)       
     @staticmethod 
     def createAlbumName(name,  index):
@@ -183,7 +183,7 @@ class FileEntry:
         self.remoteSize=None
         self.album=album
     def getFullName(self):
-        return album.getAlbumName()+" "+name
+        return self.album.getAlbumName()+" "+self.name
     def getLocalHash(self):
         if not(self.localHash):
             md5 = hashlib.md5()
@@ -221,13 +221,13 @@ class FileEntry:
         return self.webReference != None
     # UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'
     def delete_local(self, event):
-        print "Not implemented delete"
+        print ("Not implemented delete")
     def silent(self, event):
         None
     def report(self, event):
-        print "Identified %s as %s - taking no action" % (self.name, event)
+        print ("Identified %s as %s - taking no action" % (self.name, event))
     def tag_remote(self, event):
-        print "Not implemented tag"
+        print ("Not implemented tag")
     def replace_remote_with_local(self, event):
         gd_client.Delete(self.webReference)
         self.upload_local()
@@ -238,7 +238,7 @@ class FileEntry:
         url = self.webReference.content.src
         "Download the data at URL to the current directory."
         basename = url[url.rindex('/') + 1:]  # Figure out a good name for the downloaded file.
-        print "Downloading %s" % (basename,)
+        print ("Downloading %s" % (basename,))
         urllib.urlretrieve(url, basename)
     def upload_local(self, event):
         while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
@@ -246,7 +246,7 @@ class FileEntry:
         if self.album.webAlbumIndex>=len(self.album.webAlbum):
             subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath), 0)
             self.album.webAlbum.append(subAlbum)
-            print 'Created album %s to sync %s' % (subAlbum.album.title.text, self.album.rootPath)
+            print ('Created album %s to sync %s' % (subAlbum.album.title.text, self.album.rootPath))
         else:
             subAlbum = self.album.webAlbum[self.album.webAlbumIndex]
         photo = self.upload2(subAlbum)    
@@ -255,7 +255,7 @@ class FileEntry:
             mimeType = mimetypes.guess_type(self.path)[0]
             if mimeType in supportedImageFormats:
                 name = urllib.quote_plus(self.name)
-                print "Uploading %s (as %s).." % (self.name, name)
+                print ("Uploading %s (as %s).." % (self.name, name))
                 metadata = gdata.photos.PhotoEntry()
                 metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
                 self.addMetadata(metadata)
@@ -263,9 +263,9 @@ class FileEntry:
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
                 return photo
             else:
-                print "Skipped %s (because can't upload file of type %s)." % (self.path, mimeType)
+                print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
         except GooglePhotosException:
-            print "Skipping upload of %s due to exception" % self.path 
+            print ("Skipping upload of %s due to exception" % self.path )
     def addMetadata(self, metadata):
             metadata.summary = atom.Summary(text='synced from '+self.path, summary_type='text')
             metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
