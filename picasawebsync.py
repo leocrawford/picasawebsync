@@ -85,8 +85,17 @@ class Albums:
                 self.scanWebPhotos(album, webAlbum)
             print 'Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text)
     def scanWebPhotos(self, foundAlbum, webAlbum):
-        print "Trying %s" % webAlbum.GetPhotosUri()
-        photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
+        for attempt in range(3):
+            try:
+                print "Trying %s attempt %s" % (webAlbum.GetPhotosUri(), attempt)     
+                photos = gd_client.GetFeed(webAlbum.GetPhotosUri())
+            except:
+                continue
+            else:
+                break
+        else:
+            print "Failed 3 times"
+            exit(-1)
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
         for photo in photos.entry:
             photoTitle=photo.title.text # urllib.unquote(photo.title.text)

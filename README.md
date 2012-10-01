@@ -1,5 +1,4 @@
-picasawebsync
-============
+# picasawebsync
 
 This python utility will allow you to sync local directories with picasaweb. It is very much in alpha state so please provdie feedback
 
@@ -19,17 +18,15 @@ Soon to be supported:
 * Optional deletion (local and web)
 * Support for browser based log-on so you don't need to tell the app your details
 
-Installation
-----------------
+## Installation
 
-1) download the latest version from the releases directory
-2) untar it to a temporary directory (tar zxvf <filename> should work for most Linux distros)
-3) (optionally) install it using 
+1. download the latest version from the releases directory
+2. untar it to a temporary directory (tar zxvf <filename> should work for most Linux distros)
+3. (optionally) install it using 
     python setup.py install 
 (you may need sudo for linux platforms)
 
-Executing it
------------------
+## Executing it
 
 
 
