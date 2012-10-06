@@ -93,7 +93,7 @@ class Albums:
                 album = AlbumEntry(os.path.join(rootDir, "downloaded", webAlbum.title.text),  webAlbum.title.text)
                 self.albums[webAlbum.title.text] = album
                 self.scanWebPhotos(album, webAlbum)
-            if not self.verbose:
+            if self.verbose:
                 print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
     def scanWebPhotos(self, foundAlbum, webAlbum):
         photos = self.repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName)
@@ -102,7 +102,7 @@ class Albums:
             photoTitle=urllib.unquote(photo.title.text)
             if photoTitle in foundAlbum.entries: 
                 entry = foundAlbum.entries[photoTitle]
-                entry.webReference = photo
+                entry.webReference = photo.content.src
                 entry.remoteHash = photo.checksum.text
                 entry.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",photo.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
                 entry.remoteSize = int(photo.size.text)
@@ -121,7 +121,7 @@ class Albums:
     def repeat(self,  function,  description):
         for attempt in range(3):
             try:
-                if (not self.verbose) and (attempt > 0):
+                if (self.verbose) and (attempt > 0):
                     print ("Trying %s attempt %s" % (description, attempt) )    
                 return function()
             except:
@@ -178,7 +178,10 @@ class FileEntry:
         self.isLocal=isLocal
         self.localHash=None
         self.remoteHash=None
-        self.webReference=webReference
+        if webReference:
+            self.webUrl=webReference.content.src
+        else:
+            self.webUrl = None
         self.remoteDate=None
         self.remoteSize=None
         self.album=album
@@ -218,7 +221,7 @@ class FileEntry:
         else:
             return Comparisons.REMOTE_ONLY
     def isWeb(self):
-        return self.webReference != None
+        return self.webUrl != None
     # UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'
     def delete_local(self, event):
         print ("Not implemented delete")
@@ -229,17 +232,20 @@ class FileEntry:
     def tag_remote(self, event):
         print ("Not implemented tag")
     def replace_remote_with_local(self, event):
-        gd_client.Delete(self.webReference)
-        self.upload_local()
+        self.delete_remote(event)
+        self.upload_local(event)
     def update_remote_metadata(self, event):
-        self.addMetadata(self.webReference)
-        self.webReference = gd_client.UpdatePhotoMetadata(self.webReference)
+        self.addMetadata(self.webUrl)
+        self.webUrl = gd_client.UpdatePhotoMetadata(self.webUrl).content.src
     def download_remote(self, event):
-        url = self.webReference.content.src
+        url = self.webUrl
         "Download the data at URL to the current directory."
         basename = url[url.rindex('/') + 1:]  # Figure out a good name for the downloaded file.
         print ("Downloading %s" % (basename,))
         urllib.urlretrieve(url, basename)
+    def delete_remote(self, event):
+        print ("Deleting %s" % (self.name))
+        gd_client.Delete(self.webUrl)        
     def upload_local(self, event):
         while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
             self.album.webAlbumIndex = self.album.webAlbumIndex + 1                        
