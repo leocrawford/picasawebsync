@@ -13,12 +13,14 @@ Currently it supports:
 * Multi-layered approach to detecting file change, including timestamp, filesize and hash of file
 * User-id and password log-on
 * Install scripts
+* Two way sync (partially supported)
+* Optional deletion (remote side only)
 
 Soon to be supported:
 
-* Two way sync (partially supported)
-* Optional deletion (local and web)
+* Optional deletion (local side)
 * Support for browser based log-on so you don't need to tell the app your details
+* A better installation process. 
 
 ## Installation
 
@@ -34,7 +36,41 @@ Soon to be supported:
     python setup.py install 
 (you may need sudo for linux platforms)
 
-## Executing it
+If you're able to help with a better installation process please shout
+
+## Running it
+
+### The basics 
+
+The minimum command is 
+
+    ./picasawebsync -u <username> -p <password> -d <one or more local directories>
+    
+Note: If python is installed in an usual place you might need to use:
+
+    python picasawebsync -u <username> -p <password> -d <one or more local directories>
+
+### The settings
+
+#### Directory
+
+The directory setting is a list of path names. They must all be directories. If any files are downloaded from a web album without a corresponding local album - it will be the first of these that is chosen.
+
+#### Naming
+
+Somehow we have to convert directory names into web album names. We could just have long strings with "/" seperators, but that isn't nice.
+
+Instead we provide a rule to convert from a path name to a web album name. These are formed by a ~ seperated list of substitution paths (using python syntax for each)
+
+For example
+
+a/b/c/d formatted using {0} is a
+a/b/c/d formatted using {0}~{1}-kkk-{0} is b-kkk-a
+a/b/c/d formatted using {0}~{0}~{1}-kkk-{0} is b-kkk-a
+a/b/c/d formatted using {0}~{0}~{0}~{0}~{1}-kkk-{0} is a
+a/b/c/d formatted using {0}~{0}~{0}~{0}@{1}~{1}-kkk-{0} is a@b
+
+
 
 
 
