@@ -194,8 +194,9 @@ class FileEntry:
         self.delete_remote(event)
         self.upload_local(event)
     def update_remote_metadata(self, event):
-        self.addMetadata(self.webUrl)
-        self.webUrl = gd_client.UpdatePhotoMetadata(self.webUrl).content.src
+        entry = gd_client.GetEntry(self.editUri)
+        self.addMetadata(entry)
+        self.setWebReference(gd_client.UpdatePhotoMetadata(entry))
     def download_remote(self, event):
         url = self.webUrl
         path = os.path.split(self.path)[0]
@@ -309,7 +310,7 @@ def repeat(function,  description, onFailRethrow):
     else:
         print ("WARNING: Failed to %s due to %s" % (description, exc_info))
         if onFailRethrow:
-            raise self.exc_info[1], None, self.exc_info[2]
+            raise exc_info
 
 
 # start of the program
