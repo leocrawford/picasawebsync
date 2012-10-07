@@ -42,7 +42,8 @@ class Albums:
                     relFileName = re.sub("^/","", fullFilename[len(album.rootPath):])
                     fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
                     album.entries[relFileName] = fileEntry
-        print ("Found "+str(len(fileAlbums))+" albums on the filesystem")
+        if verbose:
+            print ("Found "+str(len(fileAlbums))+" albums on the filesystem")
         return fileAlbums;
     def scanWebAlbums(self):
         # walk the web album finding albums there
@@ -53,8 +54,7 @@ class Albums:
                 foundAlbum = self.albums[webAlbumTitle]
                 self.scanWebPhotos(foundAlbum, webAlbum)
             else:
-                # FIXME
-                album = AlbumEntry(os.path.join(rootDir, "downloaded", webAlbum.title.text),  webAlbum.title.text)
+                album = AlbumEntry(os.path.join(rootDir[0], webAlbum.title.text),  webAlbum.title.text)
                 self.albums[webAlbum.title.text] = album
                 self.scanWebPhotos(album, webAlbum)
             if verbose:
@@ -191,7 +191,6 @@ class FileEntry:
         self.webUrl = gd_client.UpdatePhotoMetadata(self.webUrl).content.src
     def download_remote(self, event):
         url = self.webUrl
-        "Download the data at URL to the current directory."
         basename = url[url.rindex('/') + 1:]  # Figure out a good name for the downloaded file.
         print ("Downloading %s" % (basename,))
         urllib.urlretrieve(url, basename)
@@ -199,31 +198,28 @@ class FileEntry:
         print ("Deleting %s" % (self.name))
         gd_client.Delete(self.webUrl)        
     def upload_local(self, event):
-        while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
-            self.album.webAlbumIndex = self.album.webAlbumIndex + 1                        
-        if self.album.webAlbumIndex>=len(self.album.webAlbum):
-            subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath), 0)
-            self.album.webAlbum.append(subAlbum)
-            print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
-        else:
-            subAlbum = self.album.webAlbum[self.album.webAlbumIndex]
-        photo = self.upload2(subAlbum)    
-    def upload2(self,  subAlbum):
-        try:
-            mimeType = mimetypes.guess_type(self.path)[0]
-            if mimeType in supportedImageFormats:
-                name = urllib.quote_plus(self.name)
-                print ("Uploading %s (as %s).." % (self.name, name))
-                metadata = gdata.photos.PhotoEntry()
-                metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
-                self.addMetadata(metadata)
-                photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, self.path, mimeType) 
-                subAlbum.numberFiles = subAlbum.numberFiles + 1
-                return photo
+        mimeType = mimetypes.guess_type(self.path)[0]
+        if mimeType in supportedImageFormats:
+            while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
+                self.album.webAlbumIndex = self.album.webAlbumIndex + 1                        
+            if self.album.webAlbumIndex>=len(self.album.webAlbum):
+                subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath), 0)
+                self.album.webAlbum.append(subAlbum)
+                print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
             else:
-                print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
-        except GooglePhotosException as detail:
-            print ("Skipping upload of %s due to exception %s" % (self.path, detail) )
+                subAlbum = self.album.webAlbum[self.album.webAlbumIndex]
+            photo = self.upload2(subAlbum, mimeType)    
+        else:
+            print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
+    def upload2(self,  subAlbum, mimeType):
+            name = urllib.quote_plus(self.name)
+            print ("Uploading %s (as %s).." % (self.name, name))
+            metadata = gdata.photos.PhotoEntry()
+            metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
+            self.addMetadata(metadata)
+            photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, self.path, mimeType) 
+            subAlbum.numberFiles = subAlbum.numberFiles + 1
+            return photo
     def addMetadata(self, metadata):
             metadata.summary = atom.Summary(text='synced from '+self.path, summary_type='text')
             metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
@@ -285,7 +281,7 @@ def repeat(function,  description, onFailRethrow):
         else:
             break
     else:
-        print ("WARNING: Failed to %s" % description)
+        print ("WARNING: Failed to %s due to %s" % (description, exc_info))
         if onFailRethrow:
             raise self.exc_info[1], None, self.exc_info[2]
 
