@@ -167,7 +167,8 @@ class AlbumEntry:
 
 class WebAlbum:
     def __init__(self, album,  numberFiles):
-        self.album = album
+        self.albumUri = album.GetPhotosUri()
+        self.albumTitle = album.title.text
         self.numberFiles = numberFiles
 
 
@@ -254,7 +255,7 @@ class FileEntry:
         if self.album.webAlbumIndex>=len(self.album.webAlbum):
             subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath), 0)
             self.album.webAlbum.append(subAlbum)
-            print ('Created album %s to sync %s' % (subAlbum.album.title.text, self.album.rootPath))
+            print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
         else:
             subAlbum = self.album.webAlbum[self.album.webAlbumIndex]
         photo = self.upload2(subAlbum)    
@@ -267,7 +268,7 @@ class FileEntry:
                 metadata = gdata.photos.PhotoEntry()
                 metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
                 self.addMetadata(metadata)
-                photo = gd_client.InsertPhoto(subAlbum.album, metadata, self.path, mimeType)
+                photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, self.path, mimeType)
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
                 return photo
             else:
