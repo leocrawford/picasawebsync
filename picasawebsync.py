@@ -52,6 +52,21 @@ modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':Passive
 def convertMode(string):
     return modes[string]
 
+def repeat(function,  description):
+    for attempt in range(3):
+        try:
+            if verbose and (attempt > 0):
+                print ("Trying %s attempt %s" % (description, attempt) )    
+            return function()
+        except:
+            continue
+        else:
+            break
+    else:
+        print ("Failed 3 times")
+        exit(-1)      
+
+
 class Albums:
     def __init__(self, rootDir, albumNaming, verbose):
         self.albums = Albums.scanFileSystem(rootDir, albumNaming)
@@ -96,7 +111,7 @@ class Albums:
             if self.verbose:
                 print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
     def scanWebPhotos(self, foundAlbum, webAlbum):
-        photos = self.repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName)
+        photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName)
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
         for photo in photos.entry:
             photoTitle=urllib.unquote(photo.title.text)
@@ -117,20 +132,7 @@ class Albums:
                 if self.verbose:
                     print ("%s: %s->%s" % (file.getFullName(), changed,  mode[changed]))
                 if not test:
-                    getattr(file, mode[changed].lower())(changed)
-    def repeat(self,  function,  description):
-        for attempt in range(3):
-            try:
-                if (self.verbose) and (attempt > 0):
-                    print ("Trying %s attempt %s" % (description, attempt) )    
-                return function()
-            except:
-                continue
-            else:
-                break
-        else:
-            print ("Failed 3 times")
-            exit(-1)       
+                    repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ))
     @staticmethod 
     def createAlbumName(name,  index):
         if index == 0:
@@ -270,8 +272,8 @@ class FileEntry:
                 return photo
             else:
                 print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
-        except GooglePhotosException:
-            print ("Skipping upload of %s due to exception" % self.path )
+        except GooglePhotosException as detail:
+            print ("Skipping upload of %s due to exception %s" % (self.path, detail) )
     def addMetadata(self, metadata):
             metadata.summary = atom.Summary(text='synced from '+self.path, summary_type='text')
             metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
@@ -311,11 +313,12 @@ gd_client.email = args.username # Set your Picasaweb e-mail address...
 gd_client.password = args.password 
 gd_client.source = 'api-sample-google-com'
 gd_client.ProgrammaticLogin()
+verbose=args.verbose
 
 rootDir = args.directory # set the directory you want to start from
 albumNaming = args.naming
 
-albums = Albums(rootDir, albumNaming, args.verbose)
+albums = Albums(rootDir, albumNaming, verbose)
 albums.scanWebAlbums()
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, args.mode, args.test)
 
