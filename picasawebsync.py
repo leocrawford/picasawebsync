@@ -45,7 +45,7 @@ class Albums:
         if verbose:
             print ("Found "+str(len(fileAlbums))+" albums on the filesystem")
         return fileAlbums;
-    def scanWebAlbums(self):
+    def scanWebAlbums(self, deletedups):
         # walk the web album finding albums there
         webAlbums = gd_client.GetUserFeed()
         for webAlbum in webAlbums.entry:
@@ -67,7 +67,11 @@ class Albums:
             if photoTitle in foundAlbum.entries:
                 entry = foundAlbum.entries[photoTitle]
                 if entry.isWeb():
-                    print "WARNING: More than one copy of %s - ignoring" % photoTitle
+                    if(deletedups):
+                        print "Deleted dupe of %s on server" % photoTitle
+                        gd_client.Delete(photo)
+                    else:
+                        print "WARNING: More than one copy of %s - ignoring" % photoTitle
                 else:
                     entry.setWebReference(photo)
                 # or photo.exif.time
@@ -283,7 +287,7 @@ RepairActions= {
         Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  
         Comparisons.UNKNOWN:Actions.REPORT, 
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-        Comparisons.REMOTE_ONLY:Actions.REPORT}
+        Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
 SyncActions= {
         Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
         Comparisons.DIFFERENT:Actions.REPORT, 
@@ -335,6 +339,7 @@ parser.add_argument("-v","--verbose", default=False,  action='store_true',  help
 parser.add_argument("-t","--test", default=False,  action='store_true',  help="Don't actually run activities, but report what you would have done (you may want to enable verbose)")
 parser.add_argument("-m","--mode", type=convertMode, help="The mode is a preset set of actions to execute in different circumstances, e.g. upload, download, sync, etc. The full set of optoins is %s. "
 "The default is upload. The full set of actions is:\n%s" % (list(modes), json.dumps(modes)),  default="upload")
+parser.add_argument("-dd","--deletedups", default=False,  action='store_true',  help="Delete any remote side duplicates")
 args = parser.parse_args()
 
 
@@ -350,6 +355,6 @@ rootDirs = args.directory # set the directory you want to start from
 albumNaming = args.naming
 
 albums = Albums(rootDirs, albumNaming)
-albums.scanWebAlbums()
+albums.scanWebAlbums(args.deletedups)
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, args.mode, args.test)
 
