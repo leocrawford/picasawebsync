@@ -29,17 +29,17 @@ class Albums:
                 albumName = convertDirToAlbum(albumNaming, rootDir,  dirName)
                 # have we already seen this album? If so append our path to it's list
                 if albumName in fileAlbums:
-                    album = fileAlbums[album.getAlbumName()]
+                    album = fileAlbums[albumName]
                     album.paths.append(dirName)
                 else:
                     # create a new album
                     album = AlbumEntry(dirName,  albumName)
-                    fileAlbums[album.getAlbumName()] = album
+                    fileAlbums[albumName] = album
                 # now iterate it's files to add them to our list
                 for fname in fileList :
                     fullFilename = os.path.join(dirName, fname)
                     # figure out the filename relative to the root dir of the album (to ensure uniqeness) 
-                    relFileName = re.sub("^/","", fullFilename[len(album.rootPath):])
+                    relFileName = re.sub("^/","", fullFilename[len(rootDir):])
                     fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
                     album.entries[relFileName] = fileEntry
         if verbose:
@@ -69,6 +69,7 @@ class Albums:
                 entry.setWebReference(photo)
                 # or photo.exif.time
             else:
+                print "%s not found in %s " % (photoTitle, foundAlbum.entries)
                 fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                 foundAlbum.entries[photoTitle] = fileEntry
     def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test):
@@ -99,13 +100,10 @@ class AlbumEntry:
         self.webAlbum = []
         self.webAlbumIndex = 0
     def __str__(self):
-        return (self.albumName+" starting at "+rootPath+" total "+str(len(self.entries))+" entries "+\
+        return (self.getAlbumName()+" under "+self.rootPath+" "+str(len(self.entries))+" entries "+\
             ["exists","doesn't exist"][not self.webAlbum]+" online")
     def getAlbumName(self):
-        if (len(self.albumName) > 0):
-            return self.albumName
-        else:
-            return "Home"
+        return self.albumName
     def getPathsAsString(self):
         return ",".join(self.paths)
     
@@ -223,7 +221,7 @@ class FileEntry:
         else:
             print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
     def upload2(self,  subAlbum, mimeType):
-            name = urllib.quote_plus(self.name)
+            name = urllib.quote(self.name, '')
             print ("Uploading %s (as %s).." % (self.name, name))
             metadata = gdata.photos.PhotoEntry()
             metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
@@ -238,6 +236,8 @@ class FileEntry:
 # Method to translate directory name to an album name   
     
 def convertDirToAlbum(form,  root,  name):
+    if root == name:
+        return "Home"
     formElements = re.split("~", form)
     nameElements = re.split("/", re.sub("^/","",name[len(root):]))
     which = min(len(formElements), len(nameElements))
