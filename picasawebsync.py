@@ -14,6 +14,7 @@ import urllib
 import time
 import datetime
 import urllib
+import json
 
 # Class to store details of an album
 
@@ -68,31 +69,31 @@ def repeat(function,  description):
 
 
 class Albums:
-    def __init__(self, rootDir, albumNaming, verbose):
-        self.albums = Albums.scanFileSystem(rootDir, albumNaming)
-        self.rootDir = rootDir
-        self.verbose = verbose
+    def __init__(self, rootDirs, albumNaming):
+        self.albums = Albums.scanFileSystem(rootDirs, albumNaming)
+        self.rootDirs = rootDirs
     # walk the directory tree populating the list of files we have locally
     @staticmethod
-    def scanFileSystem(rootDir, albumNaming):
+    def scanFileSystem(rootDirs, albumNaming):
         fileAlbums = {}
-        for dirName,subdirList,fileList in os.walk( rootDir ) :
-            albumName = convertDirToAlbum(albumNaming, rootDir,  dirName)
-            # have we already seen this album? If so append our path to it's list
-            if albumName in fileAlbums:
-                album = fileAlbums[album.getAlbumName()]
-                album.paths.append(dirName)
-            else:
-                # create a new album
-                album = AlbumEntry(dirName,  albumName)
-                fileAlbums[album.getAlbumName()] = album
-            # now iterate it's files to add them to our list
-            for fname in fileList :
-                fullFilename = os.path.join(dirName, fname)
-                # figure out the filename relative to the root dir of the album (to ensure uniqeness) 
-                relFileName = re.sub("^/","", fullFilename[len(album.rootPath):])
-                fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
-                album.entries[relFileName] = fileEntry
+        for rootDir in rootDirs:
+            for dirName,subdirList,fileList in os.walk( rootDir ) :
+                albumName = convertDirToAlbum(albumNaming, rootDir,  dirName)
+                # have we already seen this album? If so append our path to it's list
+                if albumName in fileAlbums:
+                    album = fileAlbums[album.getAlbumName()]
+                    album.paths.append(dirName)
+                else:
+                    # create a new album
+                    album = AlbumEntry(dirName,  albumName)
+                    fileAlbums[album.getAlbumName()] = album
+                # now iterate it's files to add them to our list
+                for fname in fileList :
+                    fullFilename = os.path.join(dirName, fname)
+                    # figure out the filename relative to the root dir of the album (to ensure uniqeness) 
+                    relFileName = re.sub("^/","", fullFilename[len(album.rootPath):])
+                    fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
+                    album.entries[relFileName] = fileEntry
         print ("Found "+str(len(fileAlbums))+" albums on the filesystem")
         return fileAlbums;
     def scanWebAlbums(self):
@@ -108,7 +109,7 @@ class Albums:
                 album = AlbumEntry(os.path.join(rootDir, "downloaded", webAlbum.title.text),  webAlbum.title.text)
                 self.albums[webAlbum.title.text] = album
                 self.scanWebPhotos(album, webAlbum)
-            if self.verbose:
+            if verbose:
                 print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
     def scanWebPhotos(self, foundAlbum, webAlbum):
         photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName)
@@ -129,7 +130,7 @@ class Albums:
         for album in self.albums.itervalues():
             for file in album.entries.itervalues():
                 changed = file.changed(compareattributes)
-                if self.verbose:
+                if verbose:
                     print ("%s: %s->%s" % (file.getFullName(), changed,  mode[changed]))
                 if not test:
                     repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ))
@@ -290,22 +291,24 @@ def convertDirToAlbum(form,  root,  name):
 
 # start of the program
 
+defaultNamingFormat="{0}~{1} ({0})"
 
 parser = argparse.ArgumentParser()
-parser.add_argument("username", help="Your picassaweb username")
-parser.add_argument("password", help="Your picassaweb password")
-parser.add_argument("directory",  help="The local directory to copy from")
-parser.add_argument("-n","--naming", default="{0}~{1} ({0})",  help="Expression to convert directory names to web album names. Formed as a ~ seperated list of substitution strings, "
+parser.add_argument("-u","--username", help="Your picassaweb username")
+parser.add_argument("-p","--password", help="Your picassaweb password")
+parser.add_argument("-d","--directory",  nargs='+',help="The local directories. The first of these will be used for any downloaded items")
+parser.add_argument("-n","--naming", default=defaultNamingFormat,  help="Expression to convert directory names to web album names. Formed as a ~ seperated list of substitution strings, "
 "so if a sub directory is in the root scanning directory then the first slement will be used, if there is a directory between them the second, etc. If the directory path is longer than the "
-"list then the last element is used (and thus the path is flattened)")
+"list then the last element is used (and thus the path is flattened). Default is \"%s\"" % defaultNamingFormat)
 # parser.add_argument("-m", "--metadatalevel", type=convertImpactLevel, help="metadata level %s" % list(activityLevels),  default="upload")
 parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to indicate whether to use date (1), filesize (2), hash (4) in addition to filename. "
 "These are applied in order from left to right with a difference returning immediately and a similarity passing on to the next check."
 "They work like chmod values, so add the values in brackets to switch on a check. Date uses a 60 second margin (to allow for different time stamp"
-"between google and your local machine, and can only identify a locally modified file not a remotely modified one. It is disabled by default",  default=5)
+"between google and your local machine, and can only identify a locally modified file not a remotely modified one. Filesize and hash are sued by default",  default=5)
 parser.add_argument("-v","--verbose", default=False,  action='store_true',  help="Increase verbosity")
 parser.add_argument("-t","--test", default=False,  action='store_true',  help="Don't actually run activities, but report what you would have done (you may want to enable verbose)")
-parser.add_argument("-m","--mode", type=convertMode, help="metadata level %s" % list(modes),  default="upload")
+parser.add_argument("-m","--mode", type=convertMode, help="The mode is a preset set of actions to execute in different circumstances, e.g. upload, download, sync, etc. The full set of optoins is %s. "
+"The default is upload. The full set of actions is:\n%s" % (list(modes), json.dumps(modes)),  default="upload")
 args = parser.parse_args()
 
 
@@ -319,27 +322,7 @@ verbose=args.verbose
 rootDir = args.directory # set the directory you want to start from
 albumNaming = args.naming
 
-albums = Albums(rootDir, albumNaming, verbose)
+albums = Albums(rootDir, albumNaming)
 albums.scanWebAlbums()
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, args.mode, args.test)
 
-
-exit(1)
-
-
-        
-  
-sys.exit(0)
-
-
-#    photos = gd_client.GetFeed('/data/feed/api/user/default/albumid/%s?kind=photo' % (album.gphoto_id.text))
-#  for photo in photos.entry:
-#       print '  Photo:', photo.title.text
-
-#    tags = gd_client.GetFeed('/data/feed/api/user/default/albumid/%s/photoid/%s?kind=tag' % (album.gphoto_id.text, photo.gphoto_id.text))
-#    for tag in tags.entry:
-#      print '    Tag:', tag.title.text
-
-#    comments = gd_client.GetFeed('/data/feed/api/user/default/albumid/%s/photoid/%s?kind=comment' % (album.gphoto_id.text, photo.gphoto_id.text))
-#    for comment in comments.entry:
-#      print '    Comment:', comment.content.text
