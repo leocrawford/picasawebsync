@@ -53,19 +53,22 @@ modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':Passive
 def convertMode(string):
     return modes[string]
 
-def repeat(function,  description):
+def repeat(function,  description, onFailRethrow):
+    exc_info = None
     for attempt in range(3):
         try:
             if verbose and (attempt > 0):
                 print ("Trying %s attempt %s" % (description, attempt) )    
             return function()
-        except:
+        except Exception,  e:
+            exc_info = e
             continue
         else:
             break
     else:
-        print ("Failed 3 times")
-        exit(-1)      
+        print ("WARNING: Failed to %s" % description)
+        if onFailRethrow:
+            raise self.exc_info[1], None, self.exc_info[2]
 
 
 class Albums:
@@ -112,7 +115,7 @@ class Albums:
             if verbose:
                 print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
     def scanWebPhotos(self, foundAlbum, webAlbum):
-        photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName)
+        photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName, True)
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
         for photo in photos.entry:
             photoTitle=urllib.unquote(photo.title.text)
@@ -133,7 +136,7 @@ class Albums:
                 if verbose:
                     print ("%s: %s->%s" % (file.getFullName(), changed,  mode[changed]))
                 if not test:
-                    repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ))
+                    repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
     @staticmethod 
     def createAlbumName(name,  index):
         if index == 0:
@@ -269,7 +272,7 @@ class FileEntry:
                 metadata = gdata.photos.PhotoEntry()
                 metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
                 self.addMetadata(metadata)
-                photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, self.path, mimeType)
+                photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, self.path, mimeType) 
                 subAlbum.numberFiles = subAlbum.numberFiles + 1
                 return photo
             else:
