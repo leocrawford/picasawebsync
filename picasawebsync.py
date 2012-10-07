@@ -52,7 +52,7 @@ class Albums:
             webAlbumTitle = Albums.flatten(webAlbum.title.text)
             if webAlbumTitle in self.albums:
                 foundAlbum = self.albums[webAlbumTitle]
-                self.scanWebPhotos(foundAlbum, webAlbum)
+                self.scanWebPhotos(foundAlbum, webAlbum,  deletedups)
             else:
                 album = AlbumEntry(os.path.join(self.rootDirs[0], webAlbum.title.text),  webAlbum.title.text)
                 self.albums[webAlbum.title.text] = album
