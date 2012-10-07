@@ -64,12 +64,14 @@ class Albums:
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
         for photo in photos.entry:
             photoTitle=urllib.unquote(photo.title.text)
-            if photoTitle in foundAlbum.entries: 
+            if photoTitle in foundAlbum.entries:
                 entry = foundAlbum.entries[photoTitle]
-                entry.setWebReference(photo)
+                if entry.isWeb():
+                    print "WARNING: More than one copy of %s - ignoring" % photoTitle
+                else:
+                    entry.setWebReference(photo)
                 # or photo.exif.time
             else:
-                print "%s not found in %s " % (photoTitle, foundAlbum.entries)
                 fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                 foundAlbum.entries[photoTitle] = fileEntry
     def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test):
