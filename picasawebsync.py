@@ -17,60 +17,6 @@ import urllib
 import json
 
 # Class to store details of an album
-
-supportedImageFormats = frozenset(["image/bmp", "image/gif",  "image/jpeg",  "image/png"])
-
-class Enum(set):
-    def __getattr__(self, name):
-        if name in self:
-            return name
-        raise AttributeError
-    
-Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN', 'LOCAL_ONLY', 'REMOTE_ONLY'])   
-Actions = Enum(['UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'])
-UploadOnlyActions = {
-        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.DIFFERENT:Actions.REPORT, 
-        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  #SILENT, 
-        Comparisons.UNKNOWN:Actions.REPORT, 
-        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-        Comparisons.REMOTE_ONLY:Actions.REPORT}
-PassiveActions = {
-        Comparisons.REMOTE_OLDER:Actions.REPORT, 
-        Comparisons.DIFFERENT:Actions.REPORT, 
-        Comparisons.SAME:Actions.SILENT, 
-        Comparisons.UNKNOWN:Actions.REPORT, 
-        Comparisons.LOCAL_ONLY:Actions.REPORT, 
-        Comparisons.REMOTE_ONLY:Actions.REPORT}        
-RepairActions= {
-        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  #SILENT, 
-        Comparisons.UNKNOWN:Actions.REPORT, 
-        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-        Comparisons.REMOTE_ONLY:Actions.REPORT}
-modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'sync':PassiveActions,  'repairUpload':RepairActions}
-def convertMode(string):
-    return modes[string]
-
-def repeat(function,  description, onFailRethrow):
-    exc_info = None
-    for attempt in range(3):
-        try:
-            if verbose and (attempt > 0):
-                print ("Trying %s attempt %s" % (description, attempt) )    
-            return function()
-        except Exception,  e:
-            exc_info = e
-            continue
-        else:
-            break
-    else:
-        print ("WARNING: Failed to %s" % description)
-        if onFailRethrow:
-            raise self.exc_info[1], None, self.exc_info[2]
-
-
 class Albums:
     def __init__(self, rootDirs, albumNaming):
         self.albums = Albums.scanFileSystem(rootDirs, albumNaming)
@@ -291,6 +237,59 @@ def convertDirToAlbum(form,  root,  name):
     which = min(len(formElements), len(nameElements))
     work = formElements[which-1].format(*nameElements)
     return work
+
+supportedImageFormats = frozenset(["image/bmp", "image/gif",  "image/jpeg",  "image/png"])
+
+class Enum(set):
+    def __getattr__(self, name):
+        if name in self:
+            return name
+        raise AttributeError
+    
+Comparisons = Enum(['REMOTE_OLDER', 'DIFFERENT', 'SAME', 'UNKNOWN', 'LOCAL_ONLY', 'REMOTE_ONLY'])   
+Actions = Enum(['UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'])
+UploadOnlyActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  #SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}
+PassiveActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPORT, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.REPORT, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}        
+RepairActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  #SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}
+modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'sync':PassiveActions,  'repairUpload':RepairActions}
+def convertMode(string):
+    return modes[string]
+
+def repeat(function,  description, onFailRethrow):
+    exc_info = None
+    for attempt in range(3):
+        try:
+            if verbose and (attempt > 0):
+                print ("Trying %s attempt %s" % (description, attempt) )    
+            return function()
+        except Exception,  e:
+            exc_info = e
+            continue
+        else:
+            break
+    else:
+        print ("WARNING: Failed to %s" % description)
+        if onFailRethrow:
+            raise self.exc_info[1], None, self.exc_info[2]
+
 
 # start of the program
 
