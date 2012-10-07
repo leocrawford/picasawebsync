@@ -66,7 +66,7 @@ class Albums:
             photoTitle=urllib.unquote(photo.title.text)
             if photoTitle in foundAlbum.entries: 
                 entry = foundAlbum.entries[photoTitle]
-                entry.webReference = photo.content.src
+                entry.webUrl = photo.content.src
                 entry.remoteHash = photo.checksum.text
                 entry.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",photo.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
                 entry.remoteSize = int(photo.size.text)
@@ -193,7 +193,7 @@ class FileEntry:
         url = self.webUrl
         basename = url[url.rindex('/') + 1:]  # Figure out a good name for the downloaded file.
         print ("Downloading %s" % (basename,))
-        urllib.urlretrieve(url, basename)
+        urllib.urlretrieve(url, os.path.join(album.rootPath, basename))
     def delete_remote(self, event):
         print ("Deleting %s" % (self.name))
         gd_client.Delete(self.webUrl)        
@@ -246,10 +246,17 @@ Actions = Enum(['UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_RE
 UploadOnlyActions = {
         Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
         Comparisons.DIFFERENT:Actions.REPORT, 
-        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  #SILENT, 
+        Comparisons.SAME:Actions.SILENT, 
         Comparisons.UNKNOWN:Actions.REPORT, 
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
         Comparisons.REMOTE_ONLY:Actions.REPORT}
+DownloadOnlyActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPORT, 
+        Comparisons.DIFFERENT:Actions.DOWNLOAD_REMOTE, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.REPORT, 
+        Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
 PassiveActions = {
         Comparisons.REMOTE_OLDER:Actions.REPORT, 
         Comparisons.DIFFERENT:Actions.REPORT, 
@@ -260,11 +267,20 @@ PassiveActions = {
 RepairActions= {
         Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
         Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  #SILENT, 
+        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  
         Comparisons.UNKNOWN:Actions.REPORT, 
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
         Comparisons.REMOTE_ONLY:Actions.REPORT}
-modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'sync':PassiveActions,  'repairUpload':RepairActions}
+SyncActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT,  
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+        
+modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'repairUpload':RepairActions,'sync':SyncActions}
+
 def convertMode(string):
     return modes[string]
 
