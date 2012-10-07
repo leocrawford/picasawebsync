@@ -56,10 +56,10 @@ class Albums:
             else:
                 album = AlbumEntry(os.path.join(self.rootDirs[0], webAlbum.title.text),  webAlbum.title.text)
                 self.albums[webAlbum.title.text] = album
-                self.scanWebPhotos(album, webAlbum)
+                self.scanWebPhotos(album, webAlbum,  deletedups)
             if verbose:
                 print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
-    def scanWebPhotos(self, foundAlbum, webAlbum):
+    def scanWebPhotos(self, foundAlbum, webAlbum,  deletedups):
         photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName, True)
         foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
         for photo in photos.entry:
