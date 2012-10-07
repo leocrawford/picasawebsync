@@ -19,13 +19,12 @@ import json
 # Class to store details of an album
 class Albums:
     def __init__(self, rootDirs, albumNaming):
-        self.albums = Albums.scanFileSystem(rootDirs, albumNaming)
         self.rootDirs = rootDirs
+        self.albums = self.scanFileSystem(albumNaming)
     # walk the directory tree populating the list of files we have locally
-    @staticmethod
-    def scanFileSystem(rootDirs, albumNaming):
+    def scanFileSystem(self, albumNaming):
         fileAlbums = {}
-        for rootDir in rootDirs:
+        for rootDir in self.rootDirs:
             for dirName,subdirList,fileList in os.walk( rootDir ) :
                 albumName = convertDirToAlbum(albumNaming, rootDir,  dirName)
                 # have we already seen this album? If so append our path to it's list
