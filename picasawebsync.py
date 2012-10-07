@@ -70,7 +70,7 @@ class Albums:
                 if entry.isWeb():
                     if(deletedups):
                         print "Deleted dupe of %s on server" % photoTitle
-                        gd_client.Delete(photo)
+                        repeat(lambda: gd_client.Delete(photo), "deleting dupe %s" % photoTitle, False)
                     else:
                         print "WARNING: More than one copy of %s - ignoring" % photoTitle
                 else:
