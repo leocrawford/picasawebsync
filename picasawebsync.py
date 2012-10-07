@@ -30,16 +30,17 @@ class Albums:
                 # have we already seen this album? If so append our path to it's list
                 if albumName in fileAlbums:
                     album = fileAlbums[albumName]
-                    album.paths.append(dirName)
+                    thisRoot = album.suggestNewRoot(dirName)
                 else:
                     # create a new album
+                    thisRoot = dirName
                     album = AlbumEntry(dirName,  albumName)
                     fileAlbums[albumName] = album
                 # now iterate it's files to add them to our list
                 for fname in fileList :
                     fullFilename = os.path.join(dirName, fname)
                     # figure out the filename relative to the root dir of the album (to ensure uniqeness) 
-                    relFileName = re.sub("^/","", fullFilename[len(rootDir):])
+                    relFileName = re.sub("^/","", fullFilename[len(thisRoot):])
                     fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
                     album.entries[relFileName] = fileEntry
         if verbose:
@@ -112,6 +113,12 @@ class AlbumEntry:
         return self.albumName
     def getPathsAsString(self):
         return ",".join(self.paths)
+    def suggestNewRoot(self, name):
+        for path in self.paths:
+            if name.startswith(path):
+                return path
+        self.paths.append(name)
+        return name
     
 # Class to store web album details
 
