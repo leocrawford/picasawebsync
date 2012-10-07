@@ -54,7 +54,7 @@ class Albums:
                 foundAlbum = self.albums[webAlbumTitle]
                 self.scanWebPhotos(foundAlbum, webAlbum)
             else:
-                album = AlbumEntry(os.path.join(rootDir[0], webAlbum.title.text),  webAlbum.title.text)
+                album = AlbumEntry(os.path.join(self.rootDirs[0], webAlbum.title.text),  webAlbum.title.text)
                 self.albums[webAlbum.title.text] = album
                 self.scanWebPhotos(album, webAlbum)
             if verbose:
@@ -126,7 +126,10 @@ class WebAlbum:
 class FileEntry:
     def __init__(self, name, path,  webReference,  isLocal,  album):
         self.name = name
-        self.path=path
+        if path:
+            self.path=path
+        else:
+            self.path=os.path.join(album.rootPath, name)
         self.isLocal=isLocal
         self.localHash=None
         self.remoteHash=None
@@ -157,7 +160,8 @@ class FileEntry:
             # filesize (2), date (1),  hash (4) 
                 if compareattributes & 1:
                     if self.remoteDate < self.getLocalDate() + 60:
-                        return Comparisons.REMOTE_OLDER              
+                        # print "%s: remote=%s and local=%s" % (self.getFullName(), time.gmtime(self.remoteDate), time.gmtime(self.getLocalDate()))
+                        return Comparisons.REMOTE_OLDER     
                 if compareattributes & 2: 
                     if self.remoteSize != self.getLocalSize():
                         return Comparisons.DIFFERENT        
@@ -191,9 +195,12 @@ class FileEntry:
         self.webUrl = gd_client.UpdatePhotoMetadata(self.webUrl).content.src
     def download_remote(self, event):
         url = self.webUrl
-        basename = url[url.rindex('/') + 1:]  # Figure out a good name for the downloaded file.
-        print ("Downloading %s" % (basename,))
-        urllib.urlretrieve(url, os.path.join(album.rootPath, basename))
+        path = os.path.split(self.path)[0]
+        print ("Downloading %s into %s" % (self.path, path))
+        if not os.path.exists(path):
+            os.makedirs(path)
+        (filename, headers) = urllib.urlretrieve(url, self.path)
+        print "%s downloaded" % filename
     def delete_remote(self, event):
         print ("Deleting %s" % (self.name))
         gd_client.Delete(self.webUrl)        
@@ -332,10 +339,11 @@ gd_client.source = 'api-sample-google-com'
 gd_client.ProgrammaticLogin()
 verbose=args.verbose
 
-rootDir = args.directory # set the directory you want to start from
+rootDirs = args.directory # set the directory you want to start from
+
 albumNaming = args.naming
 
-albums = Albums(rootDir, albumNaming)
+albums = Albums(rootDirs, albumNaming)
 albums.scanWebAlbums()
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, args.mode, args.test)
 
