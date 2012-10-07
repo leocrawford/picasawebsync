@@ -66,10 +66,7 @@ class Albums:
             photoTitle=urllib.unquote(photo.title.text)
             if photoTitle in foundAlbum.entries: 
                 entry = foundAlbum.entries[photoTitle]
-                entry.webUrl = photo.content.src
-                entry.remoteHash = photo.checksum.text
-                entry.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",photo.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
-                entry.remoteSize = int(photo.size.text)
+                entry.setWebReference(photo)
                 # or photo.exif.time
             else:
                 fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
@@ -133,13 +130,19 @@ class FileEntry:
         self.isLocal=isLocal
         self.localHash=None
         self.remoteHash=None
-        if webReference:
-            self.webUrl=webReference.content.src
-        else:
-            self.webUrl = None
         self.remoteDate=None
         self.remoteSize=None
         self.album=album
+        self.setWebReference(webReference)
+    def setWebReference(self, webReference):
+        if webReference:
+            self.editUri = webReference.GetEditLink().href
+            self.webUrl = webReference.content.src
+            self.remoteHash = webReference.checksum.text
+            self.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",webReference.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
+            self.remoteSize = int(webReference.size.text)
+        else:
+            self.webUrl = None
     def getFullName(self):
         return self.album.getAlbumName()+" "+self.name
     def getLocalHash(self):
@@ -199,11 +202,11 @@ class FileEntry:
         print ("Downloading %s into %s" % (self.path, path))
         if not os.path.exists(path):
             os.makedirs(path)
-        (filename, headers) = urllib.urlretrieve(url, self.path)
-        print "%s downloaded" % filename
+        urllib.urlretrieve(url, self.path)
+        os.utime(path, (int(self.remoteDate), int(self.remoteDate)))
     def delete_remote(self, event):
         print ("Deleting %s" % (self.name))
-        gd_client.Delete(self.webUrl)        
+        gd_client.Delete(self.editUri)        
     def upload_local(self, event):
         mimeType = mimetypes.guess_type(self.path)[0]
         if mimeType in supportedImageFormats:
