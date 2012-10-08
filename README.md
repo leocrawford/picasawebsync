@@ -58,17 +58,62 @@ The directory setting is a list of path names. They must all be directories. If 
 
 #### Naming
 
-Somehow we have to convert directory names into web album names. We could just have long strings with "/" seperators, but that isn't nice.
+In order to convery directory names into "beautiful" web abum names we need to do a mapping. The premise of the mapping is a list of transformations, one for directory paths that are one deep, the next for two deep, 
+the next for three deep, etc. etc.
 
-Instead we provide a rule to convert from a path name to a web album name. These are formed by a ~ seperated list of substitution paths (using python syntax for each)
+Because that doesn't cope well with very deep directory structures the app will simply use the longest one there if there isn't one long enough. This lets us do clever things like out-of-order directory names.
+
+As a real example my photos are indexed by year / albumName so I choose to use a mapping of {0} for files under directly a year, but {1} ({0}) for all otehrs which gives me the album name first, then the year in brackets. 
+All extra paths (e.g. photographer or sub-trip location) are simply forgotton.
+
+As will be apparant from the above example the actual substitutions are simple substitutions of the form {x} where x is the position in the directory path (0 is far left) that we should use. 
 
 For example
 
-    a/b/c/d formatted using {0} is a
-    a/b/c/d formatted using {0}~{1}-kkk-{0} is b-kkk-a
-    a/b/c/d formatted using {0}~{0}~{1}-kkk-{0} is b-kkk-a
-    a/b/c/d formatted using {0}~{0}~{0}~{0}~{1}-kkk-{0} is a   
-    a/b/c/d formatted using {0}~{0}~{0}~{0}@{1}~{1}-kkk-{0} is a@b
+    a/b/c/d formatted using -n {0} is a
+    a/b/c/d formatted using -n {0}{1}-kkk-{0} is b-kkk-a
+    a/b/c/d formatted using -n {0} {0} {1}-kkk-{0} is b-kkk-a
+    a/b/c/d formatted using -n {0} {0} {0} {0} {1}-kkk-{0} is a   
+    a/b/c/d formatted using -n {0} {0} {0} {0}@{1} {1}-kkk-{0} is a@b
+    
+#### Mode
+
+UploadOnlyActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}
+DownloadOnlyActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPORT, 
+        Comparisons.DIFFERENT:Actions.DOWNLOAD_REMOTE, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.REPORT, 
+        Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+PassiveActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPORT, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.REPORT, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}        
+RepairActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
+SyncActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT,  
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+
 
 
 
