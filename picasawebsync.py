@@ -80,13 +80,18 @@ class Albums:
                 fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                 foundAlbum.entries[photoTitle] = fileEntry
     def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test):
+        size = 0
+        for album in self.albums.itervalues():
+           size+= len(album.entries)
+        count = 0
         for album in self.albums.itervalues():
             for file in album.entries.itervalues():
                 changed = file.changed(compareattributes)
                 if verbose:
-                    print ("%s: %s->%s" % (file.getFullName(), changed,  mode[changed]))
+                    print ("%s (%s) #%s/%s - %s" % (mode[changed],changed, str(count),str(size),file.getFullName()))
                 if not test:
                     repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
+                count += 1
     @staticmethod 
     def createAlbumName(name,  index):
         if index == 0:
@@ -211,13 +216,11 @@ class FileEntry:
     def download_remote(self, event):
         url = self.webUrl
         path = os.path.split(self.path)[0]
-        print ("Downloading %s into %s" % (self.path, path))
         if not os.path.exists(path):
             os.makedirs(path)
         urllib.urlretrieve(url, self.path)
         os.utime(path, (int(self.remoteDate), int(self.remoteDate)))
     def delete_remote(self, event):
-        print ("Deleting %s" % (self.name))
         gd_client.Delete(self.editUri)        
     def upload_local(self, event):
         mimeType = mimetypes.guess_type(self.path)[0]
@@ -227,7 +230,8 @@ class FileEntry:
             if self.album.webAlbumIndex>=len(self.album.webAlbum):
                 subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath), 0)
                 self.album.webAlbum.append(subAlbum)
-                print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
+                if verbose:
+                    print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
             else:
                 subAlbum = self.album.webAlbum[self.album.webAlbumIndex]
             photo = self.upload2(subAlbum, mimeType)    
@@ -235,7 +239,6 @@ class FileEntry:
             print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
     def upload2(self,  subAlbum, mimeType):
             name = urllib.quote(self.name, '')
-            print ("Uploading %s (as %s).." % (self.name, name))
             metadata = gdata.photos.PhotoEntry()
             metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
             self.addMetadata(metadata)
@@ -248,10 +251,9 @@ class FileEntry:
     
 # Method to translate directory name to an album name   
     
-def convertDirToAlbum(form,  root,  name):
+def convertDirToAlbum(formElements,  root,  name):
     if root == name:
         return "Home"
-    formElements = re.split("~", form)
     nameElements = re.split("/", re.sub("^/","",name[len(root):]))
     which = min(len(formElements), len(nameElements))
     work = formElements[which-1].format(*nameElements)
@@ -317,6 +319,8 @@ def repeat(function,  description, onFailRethrow):
             return function()
         except Exception,  e:
             exc_info = e
+            # FIXME - to try and stop 403 token expired
+            gd_client.ProgrammaticLogin()
             continue
         else:
             break
@@ -328,13 +332,13 @@ def repeat(function,  description, onFailRethrow):
 
 # start of the program
 
-defaultNamingFormat="{0}~{1} ({0})"
+defaultNamingFormat=["{0}", "{1} ({0})"]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-u","--username", help="Your picassaweb username")
 parser.add_argument("-p","--password", help="Your picassaweb password")
 parser.add_argument("-d","--directory",  nargs='+',help="The local directories. The first of these will be used for any downloaded items")
-parser.add_argument("-n","--naming", default=defaultNamingFormat,  help="Expression to convert directory names to web album names. Formed as a ~ seperated list of substitution strings, "
+parser.add_argument("-n","--naming", default=defaultNamingFormat,  nargs='+',help="Expression to convert directory names to web album names. Formed as a ~ seperated list of substitution strings, "
 "so if a sub directory is in the root scanning directory then the first slement will be used, if there is a directory between them the second, etc. If the directory path is longer than the "
 "list then the last element is used (and thus the path is flattened). Default is \"%s\"" % defaultNamingFormat)
 # parser.add_argument("-m", "--metadatalevel", type=convertImpactLevel, help="metadata level %s" % list(activityLevels),  default="upload")

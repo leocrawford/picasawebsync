@@ -64,11 +64,11 @@ Instead we provide a rule to convert from a path name to a web album name. These
 
 For example
 
-a/b/c/d formatted using {0} is a
-a/b/c/d formatted using {0}~{1}-kkk-{0} is b-kkk-a
-a/b/c/d formatted using {0}~{0}~{1}-kkk-{0} is b-kkk-a
-a/b/c/d formatted using {0}~{0}~{0}~{0}~{1}-kkk-{0} is a
-a/b/c/d formatted using {0}~{0}~{0}~{0}@{1}~{1}-kkk-{0} is a@b
+    a/b/c/d formatted using {0} is a
+    a/b/c/d formatted using {0}~{1}-kkk-{0} is b-kkk-a
+    a/b/c/d formatted using {0}~{0}~{1}-kkk-{0} is b-kkk-a
+    a/b/c/d formatted using {0}~{0}~{0}~{0}~{1}-kkk-{0} is a   
+    a/b/c/d formatted using {0}~{0}~{0}~{0}@{1}~{1}-kkk-{0} is a@b
 
 
 
