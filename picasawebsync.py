@@ -62,7 +62,8 @@ class Albums:
                 print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
     def scanWebPhotos(self, foundAlbum, webAlbum,  deletedups):
         photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName, True)
-        foundAlbum.webAlbum.append(WebAlbum(webAlbum, int(photos.total_results.text)))
+        webAlbum = WebAlbum(webAlbum, int(photos.total_results.text))
+        foundAlbum.webAlbum.append(webAlbum)
         for photo in photos.entry:
             photoTitle=urllib.unquote(photo.title.text)
             if photoTitle in foundAlbum.entries:
@@ -152,13 +153,20 @@ class FileEntry:
         self.setWebReference(webReference)
     def setWebReference(self, webReference):
         if webReference:
-            self.editUri = webReference.GetEditLink().href
+            self.gphoto_id = webReference.gphoto_id.text
+            self_albumid = webReference.albumid.text
             self.webUrl = webReference.content.src
             self.remoteHash = webReference.checksum.text
             self.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",webReference.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
             self.remoteSize = int(webReference.size.text)
         else:
             self.webUrl = None
+    def getEditObject(self):
+        if self.gphoto_id:
+            photos = gd_client.GetFeed('data/feed/api/user/<userid>/albumid/<albumid>/photoid/<photoid>' % ("default", self_albumid,  self.gphoto_id))
+            if len(photos) == 1:
+                return photos[0]
+        return None
     def getFullName(self):
         return self.album.getAlbumName()+" "+self.name
     def getLocalHash(self):
@@ -210,7 +218,7 @@ class FileEntry:
         self.delete_remote(event)
         self.upload_local(event)
     def update_remote_metadata(self, event):
-        entry = gd_client.GetEntry(self.editUri)
+        entry = gd_client.GetEntry(self.getEditObject())
         self.addMetadata(entry)
         self.setWebReference(gd_client.UpdatePhotoMetadata(entry))
     def download_remote(self, event):
@@ -221,7 +229,7 @@ class FileEntry:
         urllib.urlretrieve(url, self.path)
         os.utime(path, (int(self.remoteDate), int(self.remoteDate)))
     def delete_remote(self, event):
-        gd_client.Delete(self.editUri)        
+        gd_client.Delete(self.getEditObject())        
     def upload_local(self, event):
         mimeType = mimetypes.guess_type(self.path)[0]
         if mimeType in supportedImageFormats:
