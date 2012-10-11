@@ -154,7 +154,7 @@ class FileEntry:
     def setWebReference(self, webReference):
         if webReference:
             self.gphoto_id = webReference.gphoto_id.text
-            self_albumid = webReference.albumid.text
+            self.albumid = webReference.albumid.text
             self.webUrl = webReference.content.src
             self.remoteHash = webReference.checksum.text
             self.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",webReference.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
@@ -163,9 +163,9 @@ class FileEntry:
             self.webUrl = None
     def getEditObject(self):
         if self.gphoto_id:
-            photos = gd_client.GetFeed('data/feed/api/user/<userid>/albumid/<albumid>/photoid/<photoid>' % ("default", self_albumid,  self.gphoto_id))
-            if len(photos) == 1:
-                return photos[0]
+            photo = gd_client.GetFeed('/data/feed/api/user/%s/albumid/%s/photoid/%s' % ("default", self.albumid,  self.gphoto_id))
+            return photo
+        # FIXME throw exception
         return None
     def getFullName(self):
         return self.album.getAlbumName()+" "+self.name
@@ -218,7 +218,7 @@ class FileEntry:
         self.delete_remote(event)
         self.upload_local(event)
     def update_remote_metadata(self, event):
-        entry = gd_client.GetEntry(self.getEditObject())
+        entry = gd_client.GetEntry(self.getEditObject().GetEditLink().href)
         self.addMetadata(entry)
         self.setWebReference(gd_client.UpdatePhotoMetadata(entry))
     def download_remote(self, event):
@@ -333,7 +333,7 @@ def repeat(function,  description, onFailRethrow):
         else:
             break
     else:
-        print ("WARNING: Failed to %s due to %s" % (description, exc_info))
+        print ("WARNING: Failed to %s. This was due to %s" % (description, exc_info))
         if onFailRethrow:
             raise exc_info
 
@@ -357,7 +357,7 @@ parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to
 parser.add_argument("-v","--verbose", default=False,  action='store_true',  help="Increase verbosity")
 parser.add_argument("-t","--test", default=False,  action='store_true',  help="Don't actually run activities, but report what you would have done (you may want to enable verbose)")
 parser.add_argument("-m","--mode", type=convertMode, help="The mode is a preset set of actions to execute in different circumstances, e.g. upload, download, sync, etc. The full set of optoins is %s. "
-"The default is upload. Look at the github page for full details of what each action does",  default="upload")
+"The default is upload. Look at the github page for full details of what each action does" % list(modes),  default="upload")
 parser.add_argument("-dd","--deletedups", default=False,  action='store_true',  help="Delete any remote side duplicates")
 for comparison in Comparisons:
     parser.add_argument("--override:%s"%comparison, default=None,  help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
