@@ -85,6 +85,9 @@ class Albums:
         for album in self.albums.itervalues():
            size+= len(album.entries)
         count = 0
+        actionCounts = {}
+        for action in Actions:
+            actionCounts[action]=0
         for album in self.albums.itervalues():
             for file in album.entries.itervalues():
                 changed = file.changed(compareattributes)
@@ -92,7 +95,9 @@ class Albums:
                     print ("%s (%s) #%s/%s - %s" % (mode[changed],changed, str(count),str(size),file.getFullName()))
                 if not test:
                     repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
+                actionCounts[mode[changed]]+=1
                 count += 1
+        print("Finished transferring files. Total files found %s, composed of %s" % (count, str(a)))
     @staticmethod 
     def createAlbumName(name,  index):
         if index == 0:
@@ -301,8 +306,8 @@ PassiveActions = {
 RepairActions= {
         Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
         Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.SAME:Actions.UPDATE_REMOTE_METADATA,  
-        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT,  
+        Comparisons.UNKNOWN:Actions.UPDATE_REMOTE_METADATA, 
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
         Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
 SyncActions= {
@@ -336,7 +341,6 @@ def repeat(function,  description, onFailRethrow):
         print ("WARNING: Failed to %s. This was due to %s" % (description, exc_info))
         if onFailRethrow:
             raise exc_info
-
 
 # start of the program
 
