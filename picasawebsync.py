@@ -15,6 +15,63 @@ import time
 import datetime
 import urllib
 import json
+import time
+
+class VideoEntry(gdata.photos.PhotoEntry):
+    pass
+    
+gdata.photos.VideoEntry = VideoEntry
+
+def InsertVideo(self, album_or_uri, video, filename_or_handle, content_type='image/jpeg'):
+    """Copy of InsertPhoto which removes protections since it *should* work"""
+    try:
+        assert(isinstance(video, VideoEntry))
+    except AssertionError:
+        raise GooglePhotosException({'status':GPHOTOS_INVALID_ARGUMENT,
+            'body':'`video` must be a gdata.photos.VideoEntry instance',
+            'reason':'Found %s, not PhotoEntry' % type(video)
+        })
+    try:
+        majtype, mintype = content_type.split('/')
+        #assert(mintype in SUPPORTED_UPLOAD_TYPES)
+    except (ValueError, AssertionError):
+        raise GooglePhotosException({'status':GPHOTOS_INVALID_CONTENT_TYPE,
+            'body':'This is not a valid content type: %s' % content_type,
+            'reason':'Accepted content types:'
+        })
+    if isinstance(filename_or_handle, (str, unicode)) and \
+        os.path.exists(filename_or_handle): # it's a file name
+        mediasource = gdata.MediaSource()
+        mediasource.setFile(filename_or_handle, content_type)
+    elif hasattr(filename_or_handle, 'read'):# it's a file-like resource
+        if hasattr(filename_or_handle, 'seek'):
+            filename_or_handle.seek(0) # rewind pointer to the start of the file
+        # gdata.MediaSource needs the content length, so read the whole image 
+        file_handle = StringIO.StringIO(filename_or_handle.read()) 
+        name = 'image'
+        if hasattr(filename_or_handle, 'name'):
+            name = filename_or_handle.name
+        mediasource = gdata.MediaSource(file_handle, content_type,
+            content_length=file_handle.len, file_name=name)
+    else: #filename_or_handle is not valid
+        raise GooglePhotosException({'status':GPHOTOS_INVALID_ARGUMENT,
+            'body':'`filename_or_handle` must be a path name or a file-like object',
+            'reason':'Found %s, not path name or object with a .read() method' % \
+            type(filename_or_handle)
+        })
+
+    if isinstance(album_or_uri, (str, unicode)): # it's a uri
+        feed_uri = album_or_uri
+    elif hasattr(album_or_uri, 'GetFeedLink'): # it's a AlbumFeed object
+        feed_uri = album_or_uri.GetFeedLink().href
+
+    try:
+        return self.Post(video, uri=feed_uri, media_source=mediasource,
+            converter=None)
+    except gdata.service.RequestError, e:
+        raise GooglePhotosException(e.args[0])
+        
+gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 
 # Class to store details of an album
 class Albums:
@@ -97,7 +154,7 @@ class Albums:
                     repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
                 actionCounts[mode[changed]]+=1
                 count += 1
-        print("Finished transferring files. Total files found %s, composed of %s" % (count, str(a)))
+        print("Finished transferring files. Total files found %s, composed of %s" % (count, str(actionCounts)))
     @staticmethod 
     def createAlbumName(name,  index):
         if index == 0:
@@ -237,7 +294,7 @@ class FileEntry:
         gd_client.Delete(self.getEditObject())        
     def upload_local(self, event):
         mimeType = mimetypes.guess_type(self.path)[0]
-        if mimeType in supportedImageFormats:
+        if mimeType in chosenFormats:
             while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
                 self.album.webAlbumIndex = self.album.webAlbumIndex + 1                        
             if self.album.webAlbumIndex>=len(self.album.webAlbum):
@@ -247,15 +304,26 @@ class FileEntry:
                     print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
             else:
                 subAlbum = self.album.webAlbum[self.album.webAlbumIndex]
-            photo = self.upload2(subAlbum, mimeType)    
+            if mimeType in supportedImageFormats:
+                photo = self.upload_local_img(subAlbum, mimeType)   
+            if mimeType in supportedVideoFormats:            
+                photo = self.upload_local_video(subAlbum, mimeType) 
         else:
             print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
-    def upload2(self,  subAlbum, mimeType):
+    def upload_local_img(self,  subAlbum, mimeType):
             name = urllib.quote(self.name, '')
             metadata = gdata.photos.PhotoEntry()
             metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
             self.addMetadata(metadata)
             photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, self.path, mimeType) 
+            subAlbum.numberFiles = subAlbum.numberFiles + 1
+            return photo 
+    def upload_local_video(self,  subAlbum, mimeType):
+            name = urllib.quote(self.name, '')
+            metadata = gdata.photos.VideoEntry()
+            metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
+            self.addMetadata(metadata)
+            photo = gd_client.InsertVideo(subAlbum.albumUri, metadata, self.path, mimeType) 
             subAlbum.numberFiles = subAlbum.numberFiles + 1
             return photo
     def addMetadata(self, metadata):
@@ -273,6 +341,8 @@ def convertDirToAlbum(formElements,  root,  name):
     return work
 
 supportedImageFormats = frozenset(["image/bmp", "image/gif",  "image/jpeg",  "image/png"])
+supportedVideoFormats = frozenset(["video/3gpp", "video/avi", "video/quicktime", "video/mp4", "video/mpeg", "video/mpeg4", "video/msvideo", "video/x-ms-asf", "video/x-ms-wmv", "video/x-msvideo"])
+
 
 class Enum(set):
     def __getattr__(self, name):
@@ -319,9 +389,14 @@ SyncActions= {
         Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
         
 modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'repairUpload':RepairActions,'sync':SyncActions}
+formats = {'photo': supportedImageFormats,  'video':supportedVideoFormats,  'both':supportedImageFormats.union(supportedVideoFormats)}
+
 
 def convertMode(string):
     return modes[string]
+    
+def convertFormat(string):
+    return formats[string]
 
 def repeat(function,  description, onFailRethrow):
     exc_info = None
@@ -333,6 +408,7 @@ def repeat(function,  description, onFailRethrow):
         except Exception,  e:
             exc_info = e
             # FIXME - to try and stop 403 token expired
+            time.sleep(6)
             gd_client.ProgrammaticLogin()
             continue
         else:
@@ -363,10 +439,13 @@ parser.add_argument("-t","--test", default=False,  action='store_true',  help="D
 parser.add_argument("-m","--mode", type=convertMode, help="The mode is a preset set of actions to execute in different circumstances, e.g. upload, download, sync, etc. The full set of optoins is %s. "
 "The default is upload. Look at the github page for full details of what each action does" % list(modes),  default="upload")
 parser.add_argument("-dd","--deletedups", default=False,  action='store_true',  help="Delete any remote side duplicates")
+parser.add_argument("-f","--format", type=convertFormat,  default="photo",  help="Upload photos, videos or both")
 for comparison in Comparisons:
     parser.add_argument("--override:%s"%comparison, default=None,  help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
 args = parser.parse_args()
 
+
+chosenFormats = args.format
 
 gd_client = gdata.photos.service.PhotosService()
 gd_client.email = args.username # Set your Picasaweb e-mail address...
