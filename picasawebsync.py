@@ -162,7 +162,7 @@ class Albums:
         if index == 0:
             return name
         else:
-            return "%s #%s" % (name, index)
+            return "%s #%s" % (name, index+1)
     @staticmethod
     def flatten(name):
         return re.sub("#[0-9]*$","",name).rstrip()
