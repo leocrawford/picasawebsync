@@ -17,6 +17,7 @@ import urllib
 import json
 import time
 
+# Upload video code came form http://nathanvangheem.com/news/moving-to-picasa-update
 class VideoEntry(gdata.photos.PhotoEntry):
     pass
     
@@ -108,6 +109,7 @@ class Albums:
         webAlbums = gd_client.GetUserFeed()
         for webAlbum in webAlbums.entry:
             webAlbumTitle = Albums.flatten(webAlbum.title.text)
+            # print "Album %s is %s in %s" % (webAlbumTitle, webAlbumTitle in self.albums,  ",".join(self.albums))
             if webAlbumTitle in self.albums:
                 foundAlbum = self.albums[webAlbumTitle]
                 self.scanWebPhotos(foundAlbum, webAlbum,  deletedups)
@@ -163,7 +165,7 @@ class Albums:
             return "%s #%s" % (name, index)
     @staticmethod
     def flatten(name):
-        return re.sub("#[0-9]*$","",name)
+        return re.sub("#[0-9]*$","",name).rstrip()
         
 
 class AlbumEntry:
@@ -387,8 +389,15 @@ SyncActions= {
         Comparisons.UNKNOWN:Actions.REPORT, 
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
         Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
-        
-modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'repairUpload':RepairActions,'sync':SyncActions}
+SyncUploadActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.SAME:Actions.SILENT,  
+        Comparisons.UNKNOWN:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
+
+modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'repairUpload':RepairActions,'sync':SyncActions, 'syncUpload':SyncUploadActions}
 formats = {'photo': supportedImageFormats,  'video':supportedVideoFormats,  'both':supportedImageFormats.union(supportedVideoFormats)}
 
 
