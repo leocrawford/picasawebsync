@@ -16,13 +16,14 @@ Currently it supports:
 * Two way sync (partially supported)
 * Optional deletion (remote side only)
 * Delete empty remote directories (see purge option)
+* confirmation params to enable delete (local and remote) using the --allowDelete option
 
 Soon to be supported:
 
 * Optional deletion (local side)
 * Support for browser based log-on so you don't need to tell the app your details
 * A better installation process. 
-* confirmation params to enable delete (local and remote)
+
 * Handle mutiple files of same name, which are flattened into the same remote directory
 
 

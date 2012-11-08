@@ -149,7 +149,7 @@ class Albums:
                 else:
                     fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                     foundAlbum.entries[photoTitle] = fileEntry
-    def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test):
+    def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test, allowDelete):
         size = 0
         for album in self.albums.itervalues():
            size+= len(album.entries)
@@ -163,7 +163,13 @@ class Albums:
                 if verbose:
                     print ("%s (%s) #%s/%s - %s" % (mode[changed],changed, str(count),str(size),file.getFullName()))
                 if not test:
-                    repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
+                    if mode[changed]==Actions.DELETE_LOCAL and not allowDelete[0] :
+                        print "Not deleteing local file because permissions not granted using allowDelete"
+                    else:
+                        if mode[changed]==Actions.DELETE_REMOTE and not allowDelete[1] :
+                            print "Not deleteing remote file because permissions not granted using allowDelete"
+                        else:                       
+                            repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
                 actionCounts[mode[changed]]+=1
                 count += 1
         print("Finished transferring files. Total files found %s, composed of %s" % (count, str(actionCounts)))
@@ -281,7 +287,7 @@ class FileEntry:
         return self.webUrl != None
     # UPLOAD_LOCAL', 'DELETE_LOCAL', 'SILENT', 'REPORT', 'DOWNLOAD_REMOTE', 'DELETE_REMOTE', 'TAG_REMOTE', 'REPLACE_REMOTE_WITH_LOCAL', 'UPDATE_REMOTE_METADATA'
     def delete_local(self, event):
-        print ("Not implemented delete")
+        os.remove(self.path)
     def silent(self, event):
         None
     def report(self, event):
@@ -409,7 +415,10 @@ SyncUploadActions= {
 
 modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'repairUpload':RepairActions,'sync':SyncActions, 'syncUpload':SyncUploadActions}
 formats = {'photo': supportedImageFormats,  'video':supportedVideoFormats,  'both':supportedImageFormats.union(supportedVideoFormats)}
+allowDeleteOptions = {'neither':(False, False), 'both':(True, True),'local':(True, False), 'remote':(False, True)}
 
+def convertAllowDelete(string):
+    return allowDeleteOptions[string]
 
 def convertMode(string):
     return modes[string]
@@ -461,6 +470,7 @@ parser.add_argument("-dd","--deletedups", default=False,  action='store_true',  
 parser.add_argument("-f","--format", type=convertFormat,  default="photo",  help="Upload photos, videos or both")
 parser.add_argument("-s","--skip",  nargs='*',  default=[],  help="Skip files or folders using a list of glob expressions.")
 parser.add_argument("--purge", default=False,  action='store_true',   help="Purge empty web filders")
+parser.add_argument("--allowDelete",  type=convertAllowDelete,  default="neither",   help="Are we allowed to do delete operations: %s" % list(allowDeleteOptions))
 for comparison in Comparisons:
     parser.add_argument("--override:%s"%comparison, default=None,  help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
 args = parser.parse_args()
@@ -488,7 +498,7 @@ excludes = r'|'.join([fnmatch.translate(x) for x in args.skip]) or r'$.'
 
 albums = Albums(rootDirs, albumNaming, excludes)
 albums.scanWebAlbums(args.deletedups, excludes)
-albums.uploadMissingAlbumsAndFiles(args.compareattributes, mode, args.test)
+albums.uploadMissingAlbumsAndFiles(args.compareattributes, mode, args.test, args.allowDelete)
 
 if args.purge:
     albums.deleteEmptyWebAlbums()
