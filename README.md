@@ -1,6 +1,6 @@
 # picasawebsync
 
-This python utility will allow you to sync local directories with picasaweb. I'd appreciate feedback if you find it useful, or find problems. I run it over a 36000+ item collection on a linux box without problems. 
+This python utility will allow you to sync local directories with picasaweb. I'd appreciate feedback if you find it useful, or find problems. I run it over a 36000+ item collection on a linux box (netgear readynas v2) without problems. 
 
 ## Features
 
@@ -21,6 +21,9 @@ Soon to be supported:
 * Optional deletion (local side)
 * Support for browser based log-on so you don't need to tell the app your details
 * A better installation process. 
+* confirmation params to enable delete (local and remote)
+* Handle mutiple files of same name, which are flattened into the same remote directory
+* Delete empty remote directories
 
 ## Installation
 

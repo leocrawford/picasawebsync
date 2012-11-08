@@ -16,6 +16,7 @@ import datetime
 import urllib
 import json
 import time
+import fnmatch
 
 # Upload video code came form http://nathanvangheem.com/news/moving-to-picasa-update
 class VideoEntry(gdata.photos.PhotoEntry):
@@ -76,14 +77,15 @@ gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 
 # Class to store details of an album
 class Albums:
-    def __init__(self, rootDirs, albumNaming):
+    def __init__(self, rootDirs, albumNaming, excludes):
         self.rootDirs = rootDirs
-        self.albums = self.scanFileSystem(albumNaming)
+        self.albums = self.scanFileSystem(albumNaming, excludes)
     # walk the directory tree populating the list of files we have locally
-    def scanFileSystem(self, albumNaming):
+    def scanFileSystem(self, albumNaming, excludes):
         fileAlbums = {}
         for rootDir in self.rootDirs:
             for dirName,subdirList,fileList in os.walk( rootDir ) :
+                subdirList[:] = [d for d in subdirList if not re.match(excludes, os.path.join(dirName, d))]
                 albumName = convertDirToAlbum(albumNaming, rootDir,  dirName)
                 # have we already seen this album? If so append our path to it's list
                 if albumName in fileAlbums:
@@ -97,48 +99,50 @@ class Albums:
                 # now iterate it's files to add them to our list
                 for fname in fileList :
                     fullFilename = os.path.join(dirName, fname)
-                    # figure out the filename relative to the root dir of the album (to ensure uniqeness) 
-                    relFileName = re.sub("^/","", fullFilename[len(thisRoot):])
-                    fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
-                    album.entries[relFileName] = fileEntry
+                    if not re.match(excludes, fullFilename):
+                        # figure out the filename relative to the root dir of the album (to ensure uniqeness) 
+                        relFileName = re.sub("^/","", fullFilename[len(thisRoot):])
+                        fileEntry = FileEntry(relFileName, fullFilename,  None, True, album)
+                        album.entries[relFileName] = fileEntry
         if verbose:
             print ("Found "+str(len(fileAlbums))+" albums on the filesystem")
         return fileAlbums;
-    def scanWebAlbums(self, deletedups):
+    def scanWebAlbums(self, deletedups, excludes):
         # walk the web album finding albums there
         webAlbums = gd_client.GetUserFeed()
         for webAlbum in webAlbums.entry:
-            webAlbumTitle = Albums.flatten(webAlbum.title.text)
-            # print "Album %s is %s in %s" % (webAlbumTitle, webAlbumTitle in self.albums,  ",".join(self.albums))
-            if webAlbumTitle in self.albums:
-                foundAlbum = self.albums[webAlbumTitle]
-                self.scanWebPhotos(foundAlbum, webAlbum,  deletedups)
-            else:
-                album = AlbumEntry(os.path.join(self.rootDirs[0], webAlbum.title.text),  webAlbum.title.text)
-                self.albums[webAlbum.title.text] = album
-                self.scanWebPhotos(album, webAlbum,  deletedups)
-            if verbose:
-                print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
-    def scanWebPhotos(self, foundAlbum, webAlbum,  deletedups):
+                webAlbumTitle = Albums.flatten(webAlbum.title.text)
+                # print "Album %s is %s in %s" % (webAlbumTitle, webAlbumTitle in self.albums,  ",".join(self.albums))
+                if webAlbumTitle in self.albums:
+                    foundAlbum = self.albums[webAlbumTitle]
+                    self.scanWebPhotos(foundAlbum, webAlbum,  deletedups, excludes)
+                else:
+                    album = AlbumEntry(os.path.join(self.rootDirs[0], webAlbum.title.text),  webAlbum.title.text)
+                    self.albums[webAlbum.title.text] = album
+                    self.scanWebPhotos(album, webAlbum,  deletedups, excludes)
+                if verbose:
+                    print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
+    def scanWebPhotos(self, foundAlbum, webAlbum,  deletedups, excludes):
         photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName, True)
         webAlbum = WebAlbum(webAlbum, int(photos.total_results.text))
         foundAlbum.webAlbum.append(webAlbum)
         for photo in photos.entry:
             photoTitle=urllib.unquote(photo.title.text)
-            if photoTitle in foundAlbum.entries:
-                entry = foundAlbum.entries[photoTitle]
-                if entry.isWeb():
-                    if(deletedups):
-                        print "Deleted dupe of %s on server" % photoTitle
-                        repeat(lambda: gd_client.Delete(photo), "deleting dupe %s" % photoTitle, False)
+            if not re.match(excludes, photoTitle):
+                if photoTitle in foundAlbum.entries:
+                    entry = foundAlbum.entries[photoTitle]
+                    if entry.isWeb():
+                        if(deletedups):
+                            print "Deleted dupe of %s on server" % photoTitle
+                            repeat(lambda: gd_client.Delete(photo), "deleting dupe %s" % photoTitle, False)
+                        else:
+                            print "WARNING: More than one copy of %s - ignoring" % photoTitle
                     else:
-                        print "WARNING: More than one copy of %s - ignoring" % photoTitle
+                        entry.setWebReference(photo)
+                    # or photo.exif.time
                 else:
-                    entry.setWebReference(photo)
-                # or photo.exif.time
-            else:
-                fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
-                foundAlbum.entries[photoTitle] = fileEntry
+                    fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
+                    foundAlbum.entries[photoTitle] = fileEntry
     def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test):
         size = 0
         for album in self.albums.itervalues():
@@ -449,6 +453,7 @@ parser.add_argument("-m","--mode", type=convertMode, help="The mode is a preset 
 "The default is upload. Look at the github page for full details of what each action does" % list(modes),  default="upload")
 parser.add_argument("-dd","--deletedups", default=False,  action='store_true',  help="Delete any remote side duplicates")
 parser.add_argument("-f","--format", type=convertFormat,  default="photo",  help="Upload photos, videos or both")
+parser.add_argument("-s","--skip",  nargs='*',  default=[],  help="Skip files or folders using a regular expression.")
 for comparison in Comparisons:
     parser.add_argument("--override:%s"%comparison, default=None,  help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
 args = parser.parse_args()
@@ -472,7 +477,9 @@ for comparison in Comparisons:
     if r:
         mode[comparison]=r
 
-albums = Albums(rootDirs, albumNaming)
-albums.scanWebAlbums(args.deletedups)
+excludes = r'|'.join([fnmatch.translate(x) for x in args.skip]) or r'$.'
+
+albums = Albums(rootDirs, albumNaming, excludes)
+albums.scanWebAlbums(args.deletedups, excludes)
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, mode, args.test)
 
