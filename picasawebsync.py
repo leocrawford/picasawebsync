@@ -107,6 +107,12 @@ class Albums:
         if verbose:
             print ("Found "+str(len(fileAlbums))+" albums on the filesystem")
         return fileAlbums;
+    def deleteEmptyWebAlbums(self):
+        webAlbums = gd_client.GetUserFeed()
+        for webAlbum in webAlbums.entry:
+            if int(webAlbum.numphotos.text) == 0:
+                print "Deleting empty album %s" % webAlbum.title.text
+                gd_client.Delete(webAlbum)                 
     def scanWebAlbums(self, deletedups, excludes):
         # walk the web album finding albums there
         webAlbums = gd_client.GetUserFeed()
@@ -453,7 +459,8 @@ parser.add_argument("-m","--mode", type=convertMode, help="The mode is a preset 
 "The default is upload. Look at the github page for full details of what each action does" % list(modes),  default="upload")
 parser.add_argument("-dd","--deletedups", default=False,  action='store_true',  help="Delete any remote side duplicates")
 parser.add_argument("-f","--format", type=convertFormat,  default="photo",  help="Upload photos, videos or both")
-parser.add_argument("-s","--skip",  nargs='*',  default=[],  help="Skip files or folders using a regular expression.")
+parser.add_argument("-s","--skip",  nargs='*',  default=[],  help="Skip files or folders using a list of glob expressions.")
+parser.add_argument("--purge", default=False,  action='store_true',   help="Purge empty web filders")
 for comparison in Comparisons:
     parser.add_argument("--override:%s"%comparison, default=None,  help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
 args = parser.parse_args()
@@ -482,4 +489,7 @@ excludes = r'|'.join([fnmatch.translate(x) for x in args.skip]) or r'$.'
 albums = Albums(rootDirs, albumNaming, excludes)
 albums.scanWebAlbums(args.deletedups, excludes)
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, mode, args.test)
+
+if args.purge:
+    albums.deleteEmptyWebAlbums()
 

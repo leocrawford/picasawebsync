@@ -15,6 +15,7 @@ Currently it supports:
 * Install scripts
 * Two way sync (partially supported)
 * Optional deletion (remote side only)
+* Delete empty remote directories (see purge option)
 
 Soon to be supported:
 
@@ -23,7 +24,7 @@ Soon to be supported:
 * A better installation process. 
 * confirmation params to enable delete (local and remote)
 * Handle mutiple files of same name, which are flattened into the same remote directory
-* Delete empty remote directories
+
 
 ## Installation
 
