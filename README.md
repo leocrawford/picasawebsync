@@ -13,19 +13,18 @@ Currently it supports:
 * Multi-layered approach to detecting file change, including timestamp, filesize and hash of file
 * User-id and password log-on
 * Install scripts
-* Two way sync (partially supported)
-* Optional deletion (remote side only)
+* Two way sync 
+* Optional deletion 
 * Delete empty remote directories (see purge option)
-* confirmation params to enable delete (local and remote) using the --allowDelete option
+* Confirmation params to enable delete (local and remote) using the --allowDelete option
+* Cross platform (python based)
+* Works on headless systems
 
 Soon to be supported:
 
-* Optional deletion (local side)
 * Support for browser based log-on so you don't need to tell the app your details
 * A better installation process. 
-
 * Handle mutiple files of same name, which are flattened into the same remote directory
-
 
 ## Installation
 
