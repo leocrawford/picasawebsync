@@ -342,7 +342,7 @@ class FileEntry:
                 if self.getLocalSize() > 104857600:
                     print ("Not uploading %s because it exceeds maximum file size" % self.path)
                 else:
-                photo = self.upload_local_video(subAlbum, mimeType) 
+                    photo = self.upload_local_video(subAlbum, mimeType) 
         else:
             print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
     def upload_local_img(self,  subAlbum, mimeType):
