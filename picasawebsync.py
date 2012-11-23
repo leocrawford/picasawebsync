@@ -18,6 +18,16 @@ import json
 import time
 import fnmatch
 
+# Borrowed from http://www.daniweb.com/software-development/python/code/216610/timing-a-function-python
+def print_timing(func):
+    def wrapper(*arg):
+        t1 = time.time()
+        res = func(*arg)
+        t2 = time.time()
+        print '%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0)
+        return res
+    return wrapper
+
 # Upload video code came form http://nathanvangheem.com/news/moving-to-picasa-update
 class VideoEntry(gdata.photos.PhotoEntry):
     pass
@@ -81,6 +91,7 @@ class Albums:
         self.rootDirs = rootDirs
         self.albums = self.scanFileSystem(albumNaming, excludes)
     # walk the directory tree populating the list of files we have locally
+    @print_timing
     def scanFileSystem(self, albumNaming, excludes):
         fileAlbums = {}
         for rootDir in self.rootDirs:
@@ -113,6 +124,7 @@ class Albums:
             if int(webAlbum.numphotos.text) == 0:
                 print "Deleting empty album %s" % webAlbum.title.text
                 gd_client.Delete(webAlbum)                 
+    @print_timing
     def scanWebAlbums(self, deletedups, excludes):
         # walk the web album finding albums there
         webAlbums = gd_client.GetUserFeed()
@@ -128,6 +140,7 @@ class Albums:
                     self.scanWebPhotos(album, webAlbum,  deletedups, excludes)
                 if verbose:
                     print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
+    @print_timing
     def scanWebPhotos(self, foundAlbum, webAlbum,  deletedups, excludes):
         photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName, True)
         webAlbum = WebAlbum(webAlbum, int(photos.total_results.text))
@@ -149,6 +162,7 @@ class Albums:
                 else:
                     fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                     foundAlbum.entries[photoTitle] = fileEntry
+    @print_timing
     def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test, allowDelete):
         size = 0
         for album in self.albums.itervalues():
@@ -325,6 +339,9 @@ class FileEntry:
             if mimeType in supportedImageFormats:
                 photo = self.upload_local_img(subAlbum, mimeType)   
             if mimeType in supportedVideoFormats:            
+                if self.getLocalSize() > 104857600:
+                    print ("Not uploading %s because it exceeds maximum file size" % self.path)
+                else:
                 photo = self.upload_local_video(subAlbum, mimeType) 
         else:
             print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))

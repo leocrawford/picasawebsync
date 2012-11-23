@@ -19,6 +19,7 @@ Currently it supports:
 * Confirmation params to enable delete (local and remote) using the --allowDelete option
 * Cross platform (python based)
 * Works on headless systems
+* Add maximum size for videos to save slow failed uploads
 
 Soon to be supported:
 
