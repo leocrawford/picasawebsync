@@ -87,6 +87,14 @@ For example
     a/b/c/d formatted using -n {0} {0} {0} {0} {1}-kkk-{0} is a   
     a/b/c/d formatted using -n {0} {0} {0} {0}@{1} {1}-kkk-{0} is a@b
     
+You can also supply regex capture and replace expression
+
+    baze-kkk-aaaa formatted using --namingextract '([a-z]*)-kkk-([a-z]*)|\2 (\1)' is base (aaaa)
+
+Then you can apply final replacement
+
+    my-photo-dir formatted using -r '-| ' is my photo dir
+
 #### Mode
 
 The -m or --mode option takes  a name (one of upload, download, repairUpload, report, sync) which correspond to the settings below.
