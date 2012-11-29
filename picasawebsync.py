@@ -87,17 +87,17 @@ gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 
 # Class to store details of an album
 class Albums:
-    def __init__(self, rootDirs, albumNaming, excludes):
+    def __init__(self, rootDirs, albumNaming, excludes, replace):
         self.rootDirs = rootDirs
-        self.albums = self.scanFileSystem(albumNaming, excludes)
+        self.albums = self.scanFileSystem(albumNaming, excludes, replace)
     # walk the directory tree populating the list of files we have locally
     @print_timing
-    def scanFileSystem(self, albumNaming, excludes):
+    def scanFileSystem(self, albumNaming, excludes, replace):
         fileAlbums = {}
         for rootDir in self.rootDirs:
             for dirName,subdirList,fileList in os.walk( rootDir ) :
                 subdirList[:] = [d for d in subdirList if not re.match(excludes, os.path.join(dirName, d))]
-                albumName = convertDirToAlbum(albumNaming, rootDir,  dirName)
+                albumName = convertDirToAlbum(albumNaming, rootDir,  dirName, replace)
                 # have we already seen this album? If so append our path to it's list
                 if albumName in fileAlbums:
                     album = fileAlbums[albumName]
@@ -367,12 +367,16 @@ class FileEntry:
     
 # Method to translate directory name to an album name   
     
-def convertDirToAlbum(formElements,  root,  name):
+def convertDirToAlbum(formElements,  root,  name, replace):
     if root == name:
         return "Home"
     nameElements = re.split("/", re.sub("^/","",name[len(root):]))
     which = min(len(formElements), len(nameElements))
     work = formElements[which-1].format(*nameElements)
+    # apply replacement pattern if provided
+    if replace:
+        rePattern = replace.split('/')
+        work = re.sub(rePattern[1], rePattern[2], work)
     return work
 
 supportedImageFormats = frozenset(["image/bmp", "image/gif",  "image/jpeg",  "image/png"])
@@ -488,6 +492,7 @@ parser.add_argument("-f","--format", type=convertFormat,  default="photo",  help
 parser.add_argument("-s","--skip",  nargs='*',  default=[],  help="Skip files or folders using a list of glob expressions.")
 parser.add_argument("--purge", default=False,  action='store_true',   help="Purge empty web filders")
 parser.add_argument("--allowDelete",  type=convertAllowDelete,  default="neither",   help="Are we allowed to do delete operations: %s" % list(allowDeleteOptions))
+parser.add_argument("-r", "--replace", default=False,   help="Replacement pattern (ex: /-/\ /)")
 for comparison in Comparisons:
     parser.add_argument("--override:%s"%comparison, default=None,  help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
 args = parser.parse_args()
@@ -513,7 +518,7 @@ for comparison in Comparisons:
 
 excludes = r'|'.join([fnmatch.translate(x) for x in args.skip]) or r'$.'
 
-albums = Albums(rootDirs, albumNaming, excludes)
+albums = Albums(rootDirs, albumNaming, excludes, args.replace)
 albums.scanWebAlbums(args.deletedups, excludes)
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, mode, args.test, args.allowDelete)
 
