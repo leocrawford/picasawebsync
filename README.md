@@ -37,6 +37,10 @@ Soon to be supported:
     unzip gdata*
     python setup.py install
 
+    or debian/ubuntu way 
+
+    apt-get install python-gdata
+
 3. download the latest version from the releases directory
 4. untar it to a temporary directory (tar zxvf <filename> should work for most Linux distros)
 5. (optionally) install it using 
