@@ -37,6 +37,10 @@ Soon to be supported:
     unzip gdata*
     python setup.py install
 
+    or debian/ubuntu way 
+
+    apt-get install python-gdata
+
 3. download the latest version from the releases directory
 4. untar it to a temporary directory (tar zxvf <filename> should work for most Linux distros)
 5. (optionally) install it using 
@@ -83,6 +87,14 @@ For example
     a/b/c/d formatted using -n {0} {0} {0} {0} {1}-kkk-{0} is a   
     a/b/c/d formatted using -n {0} {0} {0} {0}@{1} {1}-kkk-{0} is a@b
     
+You can also supply regex capture and replace expression
+
+    baze-kkk-aaaa formatted using --namingextract '([a-z]*)-kkk-([a-z]*)|\2 (\1)' is base (aaaa)
+
+Then you can apply final replacement
+
+    my-photo-dir formatted using -r '-| ' is my photo dir
+
 #### Mode
 
 The -m or --mode option takes  a name (one of upload, download, repairUpload, report, sync) which correspond to the settings below.

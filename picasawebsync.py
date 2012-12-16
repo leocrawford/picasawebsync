@@ -87,17 +87,17 @@ gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 
 # Class to store details of an album
 class Albums:
-    def __init__(self, rootDirs, albumNaming, excludes):
+    def __init__(self, rootDirs, albumNaming, excludes, replace, namingextract):
         self.rootDirs = rootDirs
-        self.albums = self.scanFileSystem(albumNaming, excludes)
+        self.albums = self.scanFileSystem(albumNaming, excludes, replace, namingextract)
     # walk the directory tree populating the list of files we have locally
     @print_timing
-    def scanFileSystem(self, albumNaming, excludes):
+    def scanFileSystem(self, albumNaming, excludes, replace, namingextract):
         fileAlbums = {}
         for rootDir in self.rootDirs:
             for dirName,subdirList,fileList in os.walk( rootDir ) :
                 subdirList[:] = [d for d in subdirList if not re.match(excludes, os.path.join(dirName, d))]
-                albumName = convertDirToAlbum(albumNaming, rootDir,  dirName)
+                albumName = convertDirToAlbum(albumNaming, rootDir,  dirName, replace, namingextract)
                 # have we already seen this album? If so append our path to it's list
                 if albumName in fileAlbums:
                     album = fileAlbums[albumName]
@@ -367,12 +367,22 @@ class FileEntry:
     
 # Method to translate directory name to an album name   
     
-def convertDirToAlbum(formElements,  root,  name):
+def convertDirToAlbum(formElements,  root,  name, replace, namingextract):
     if root == name:
         return "Home"
     nameElements = re.split("/", re.sub("^/","",name[len(root):]))
     which = min(len(formElements), len(nameElements))
     work = formElements[which-1].format(*nameElements)
+    # apply naming extraction if provided
+    if namingextract:
+        nePattern = namingextract.split('|')
+        work = re.sub(nePattern[0], nePattern[1], work)
+
+    # apply replacement pattern if provided
+    if replace:
+        rePattern = replace.split('|')
+        work = re.sub(rePattern[0], rePattern[1], work)
+      
     return work
 
 supportedImageFormats = frozenset(["image/bmp", "image/gif",  "image/jpeg",  "image/png"])
@@ -475,6 +485,8 @@ parser.add_argument("-n","--naming", default=defaultNamingFormat,  nargs='+',hel
 "so if a sub directory is in the root scanning directory then the first slement will be used, if there is a directory between them the second, etc. If the directory path is longer than the "
 "list then the last element is used (and thus the path is flattened). Default is \"%s\"" % defaultNamingFormat)
 # parser.add_argument("-m", "--metadatalevel", type=convertImpactLevel, help="metadata level %s" % list(activityLevels),  default="upload")
+parser.add_argument("--namingextract", default=False,   help="Naming extraction rules. It applies to the name computed according to naming options."
+"Search capturing pattern is seperated by a | from formatting expression (ex: '([0-9]{4})[0-9]*-(.*)|\2 (\2)'")
 parser.add_argument("-c", "--compareattributes", type=int, help="set of flags to indicate whether to use date (1), filesize (2), hash (4) in addition to filename. "
 "These are applied in order from left to right with a difference returning immediately and a similarity passing on to the next check."
 "They work like chmod values, so add the values in brackets to switch on a check. Date uses a 60 second margin (to allow for different time stamp"
@@ -488,6 +500,7 @@ parser.add_argument("-f","--format", type=convertFormat,  default="photo",  help
 parser.add_argument("-s","--skip",  nargs='*',  default=[],  help="Skip files or folders using a list of glob expressions.")
 parser.add_argument("--purge", default=False,  action='store_true',   help="Purge empty web filders")
 parser.add_argument("--allowDelete",  type=convertAllowDelete,  default="neither",   help="Are we allowed to do delete operations: %s" % list(allowDeleteOptions))
+parser.add_argument("-r", "--replace", default=False,   help="Replacement pattern. Search string is seperated by a pipe from replace string (ex: '-| '")
 for comparison in Comparisons:
     parser.add_argument("--override:%s"%comparison, default=None,  help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
 args = parser.parse_args()
@@ -513,7 +526,7 @@ for comparison in Comparisons:
 
 excludes = r'|'.join([fnmatch.translate(x) for x in args.skip]) or r'$.'
 
-albums = Albums(rootDirs, albumNaming, excludes)
+albums = Albums(rootDirs, albumNaming, excludes, args.replace, args.namingextract)
 albums.scanWebAlbums(args.deletedups, excludes)
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, mode, args.test, args.allowDelete)
 
