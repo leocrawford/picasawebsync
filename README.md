@@ -20,6 +20,7 @@ Currently it supports:
 * Cross platform (python based)
 * Works on headless systems
 * Add maximum size for videos to save slow failed uploads
+* Option to shrink (reduce) photos to the 2048x2048 pixel limit imposed by google (may stop some of the sync capabilities from working)
 
 Soon to be supported:
 

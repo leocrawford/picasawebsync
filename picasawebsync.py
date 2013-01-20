@@ -17,7 +17,39 @@ import urllib
 import json
 import time
 import fnmatch
+import tempfile
+import Image
 
+PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
+
+# Global used for a temp directory
+gTempDir = ''
+
+def getTempPath(localPath):
+  baseName = os.path.basename(localPath)
+  global gTempDir
+  if gTempDir == '':
+    gTempDir = tempfile.mkdtemp('imageshrinker')
+  tempPath = os.path.join(gTempDir, baseName)
+  return tempPath
+
+# used https://github.com/jackpal/picasawebuploader/blob/master/main.py and 
+# http://stackoverflow.com/questions/273946/how-do-i-resize-an-image-using-pil-and-maintain-its-aspect-ratio
+def shrinkIfNeeded(path):
+    if args.shrink:
+        imagePath = getTempPath(path)
+        try:     
+            im = Image.open(path)
+            if (im.size[0] > PICASA_MAX_FREE_IMAGE_DIMENSION  or im.size[1] > PICASA_MAX_FREE_IMAGE_DIMENSION):
+                print "Shrinking " + path
+                im.thumbnail((PICASA_MAX_FREE_IMAGE_DIMENSION, PICASA_MAX_FREE_IMAGE_DIMENSION), Image.ANTIALIAS)
+                im.save(imagePath, "JPEG")
+                return imagePath
+        except IOError:
+            print "cannot create thumbnail for '%s' - using full size image" % path
+    return path
+      
+ 
 # Borrowed from http://www.daniweb.com/software-development/python/code/216610/timing-a-function-python
 def print_timing(func):
     def wrapper(*arg):
@@ -91,7 +123,7 @@ class Albums:
         self.rootDirs = rootDirs
         self.albums = self.scanFileSystem(albumNaming, excludes, replace, namingextract)
     # walk the directory tree populating the list of files we have locally
-    @print_timing
+    # @print_timing
     def scanFileSystem(self, albumNaming, excludes, replace, namingextract):
         fileAlbums = {}
         for rootDir in self.rootDirs:
@@ -124,7 +156,7 @@ class Albums:
             if int(webAlbum.numphotos.text) == 0:
                 print "Deleting empty album %s" % webAlbum.title.text
                 gd_client.Delete(webAlbum)                 
-    @print_timing
+    # @print_timing
     def scanWebAlbums(self, deletedups, excludes):
         # walk the web album finding albums there
         webAlbums = gd_client.GetUserFeed()
@@ -140,7 +172,7 @@ class Albums:
                     self.scanWebPhotos(album, webAlbum,  deletedups, excludes)
                 if verbose:
                     print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
-    @print_timing
+    # @print_timing
     def scanWebPhotos(self, foundAlbum, webAlbum,  deletedups, excludes):
         photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()), "list photos in album %s" % foundAlbum.albumName, True)
         webAlbum = WebAlbum(webAlbum, int(photos.total_results.text))
@@ -162,7 +194,7 @@ class Albums:
                 else:
                     fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                     foundAlbum.entries[photoTitle] = fileEntry
-    @print_timing
+    # @print_timing
     def uploadMissingAlbumsAndFiles(self, compareattributes, mode, test, allowDelete):
         size = 0
         for album in self.albums.itervalues():
@@ -350,7 +382,7 @@ class FileEntry:
             metadata = gdata.photos.PhotoEntry()
             metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
             self.addMetadata(metadata)
-            photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, self.path, mimeType) 
+            photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, shrinkIfNeeded(self.path), mimeType) 
             subAlbum.numberFiles = subAlbum.numberFiles + 1
             return photo 
     def upload_local_video(self,  subAlbum, mimeType):
@@ -498,6 +530,7 @@ parser.add_argument("-m","--mode", type=convertMode, help="The mode is a preset 
 parser.add_argument("-dd","--deletedups", default=False,  action='store_true',  help="Delete any remote side duplicates")
 parser.add_argument("-f","--format", type=convertFormat,  default="photo",  help="Upload photos, videos or both")
 parser.add_argument("-s","--skip",  nargs='*',  default=[],  help="Skip files or folders using a list of glob expressions.")
+parser.add_argument("--shrink", default=False,  action='store_true',   help="Shrink to max free google size (may cause problems with -c2 and maybe even -c1. Please report.")
 parser.add_argument("--purge", default=False,  action='store_true',   help="Purge empty web filders")
 parser.add_argument("--allowDelete",  type=convertAllowDelete,  default="neither",   help="Are we allowed to do delete operations: %s" % list(allowDeleteOptions))
 parser.add_argument("-r", "--replace", default=False,   help="Replacement pattern. Search string is seperated by a pipe from replace string (ex: '-| '")
