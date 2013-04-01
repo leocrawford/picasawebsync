@@ -472,7 +472,7 @@ SyncUploadActions= {
         Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
         Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
 
-modes = {'upload':UploadOnlyActions, 'download':PassiveActions, 'report':PassiveActions, 'repairUpload':RepairActions,'sync':SyncActions, 'syncUpload':SyncUploadActions}
+modes = {'upload':UploadOnlyActions, 'download':DownloadOnlyActions, 'report':PassiveActions, 'repairUpload':RepairActions,'sync':SyncActions, 'syncUpload':SyncUploadActions}
 formats = {'photo': supportedImageFormats,  'video':supportedVideoFormats,  'both':supportedImageFormats.union(supportedVideoFormats)}
 allowDeleteOptions = {'neither':(False, False), 'both':(True, True),'local':(True, False), 'remote':(False, True)}
 
