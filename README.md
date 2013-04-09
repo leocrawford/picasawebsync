@@ -31,7 +31,11 @@ Soon to be supported:
 ## Installation
 
 1. Install you have python >=2.7 <3 installed (these version numbers are based on some assumptions, so I could be wrong), make sure it has SSL support enabled
-2. Add the gdata packages 
+2. Install PIL package
+    debian/ubuntu way
+
+    apt-get install python-imaging
+3. Add the gdata packages 
 
     cd /tmp
     wget https://gdata-python-client.googlecode.com/files/gdata-2.0.17.zip
@@ -42,9 +46,9 @@ Soon to be supported:
 
     apt-get install python-gdata
 
-3. download the latest version from the releases directory
-4. untar it to a temporary directory (tar zxvf <filename> should work for most Linux distros)
-5. (optionally) install it using 
+4. download the latest version from the releases directory
+5. untar it to a temporary directory (tar zxvf <filename> should work for most Linux distros)
+6. (optionally) install it using 
 
     python setup.py install  (you may need sudo for linux platforms)
 
@@ -90,7 +94,7 @@ For example
     
 You can also supply regex capture and replace expression
 
-    baze-kkk-aaaa formatted using --namingextract '([a-z]*)-kkk-([a-z]*)|\2 (\1)' is base (aaaa)
+    base-kkk-aaaa formatted using --namingextract '([a-z]*)-kkk-([a-z]*)|\2 (\1)' is base (aaaa)
 
 Then you can apply final replacement
 
@@ -102,7 +106,7 @@ The -m or --mode option takes  a name (one of upload, download, repairUpload, re
 
 For each mode there are a set of events (left) and actions (right). When the event occurs the action on the right is invoked. By changing the mode you can therefore choose whether to do a download, and upload or something more complex.
 
-If you want to simply see what events are triggered run with report. If you wnat to simulate a run use the -t or --test option
+If you want to simply see what events are triggered run with report. If you want to simulate a run use the -t or --test option
 
     UploadOnlyActions = {
             Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
@@ -158,11 +162,11 @@ upload: "none", "upload", "replace", "delete", "overwrite"
 metadata: "none", "upload", "replace", "delete", "overwrite"
 
 
-LOCAL_ONLY->Upload_local, Delete_local, Skip, Skip_report
-REMOTE_ONLY->Download_remote, Delete_remote, Tag_remote, Skip, Skip_report
-REMOTE_OLDER->Upload_local, Skip, Skip_report
-DIFFERENT->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
-SAME->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
-UNKNOWN (No hash)->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
+    LOCAL_ONLY->Upload_local, Delete_local, Skip, Skip_report
+    REMOTE_ONLY->Download_remote, Delete_remote, Tag_remote, Skip, Skip_report
+    REMOTE_OLDER->Upload_local, Skip, Skip_report
+    DIFFERENT->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
+    SAME->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
+    UNKNOWN (No hash)->Upload_local,Download_remote,Upload_local_metadata, Skip, Skip_report
 
 python setup.py sdist
