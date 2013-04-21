@@ -190,7 +190,7 @@ class Albums:
                             print "WARNING: More than one copy of %s - ignoring" % photoTitle
                     else:
                         entry.setWebReference(photo)
-                    # or photo.exif.time
+                    # print photo.exif.time
                 else:
                     fileEntry = FileEntry(photoTitle, None,  photo, False, foundAlbum)
                     foundAlbum.entries[photoTitle] = fileEntry
@@ -218,6 +218,7 @@ class Albums:
                             repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
                 actionCounts[mode[changed]]+=1
                 count += 1
+            album.writeDate()
         print("Finished transferring files. Total files found %s, composed of %s" % (count, str(actionCounts)))
     @staticmethod 
     def createAlbumName(name,  index):
@@ -238,6 +239,20 @@ class AlbumEntry:
         self.entries = {}
         self.webAlbum = []
         self.webAlbumIndex = 0
+        self.earliestDate = None
+    def considerEarliestDate(self, exif):
+        if exif != None and exif.time != None and noupdatealbummetadata == False:
+            date = exif.time.text
+            if self.earliestDate == None or date < self.earliestDate:
+                self.earliestDate = date
+            print self.earliestDate 
+    def writeDate(self):
+        if self.earliestDate != None and noupdatealbummetadata == False:
+            print "Writing earliest date as : "+self.earliestDate
+            for a in self.webAlbum:
+                album = a.getEditObject()
+                album.timestamp = gdata.photos.Timestamp(text=self.earliestDate) # "%d000" % time.mktime((2010, 02, 03, 12, 00, 00, -1, -1, -1)))
+                gd_client.Put(album, album.GetEditLink().href, converter=gdata.photos.AlbumEntryFromString)
     def __str__(self):
         return (self.getAlbumName()+" under "+self.rootPath+" "+str(len(self.entries))+" entries "+\
             ["exists","doesn't exist"][not self.webAlbum]+" online")
@@ -259,8 +274,11 @@ class WebAlbum:
         self.albumUri = album.GetPhotosUri()
         self.albumTitle = album.title.text
         self.numberFiles = numberFiles
-
-
+        self.albumid = album.id.text
+    def getEditObject(self):
+        # print "Getting id "+self.albumid +" = "+gd_client.GetEntry(self.albumid)
+        return gd_client.GetEntry(self.albumid)
+     
 # Class to store details of an individual file
 
 class FileEntry:
@@ -345,6 +363,7 @@ class FileEntry:
         self.upload_local(event)
     def update_remote_metadata(self, event):
         entry = gd_client.GetEntry(self.getEditObject().GetEditLink().href)
+        self.album.considerEarliestDate(entry.exif)
         self.addMetadata(entry)
         self.setWebReference(gd_client.UpdatePhotoMetadata(entry))
     def download_remote(self, event):
@@ -362,7 +381,8 @@ class FileEntry:
             while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
                 self.album.webAlbumIndex = self.album.webAlbumIndex + 1                        
             if self.album.webAlbumIndex>=len(self.album.webAlbum):
-                subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath+' using github.com/leocrawford/picasawebsync'), 0)
+                googleWebAlbum = gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath+' using github.com/leocrawford/picasawebsync')
+                subAlbum = WebAlbum(googleWebAlbum, 0)
                 self.album.webAlbum.append(subAlbum)
                 if verbose:
                     print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
@@ -383,6 +403,7 @@ class FileEntry:
             metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
             self.addMetadata(metadata)
             photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, shrinkIfNeeded(self.path), mimeType) 
+            self.album.considerEarliestDate(photo.exif)
             subAlbum.numberFiles = subAlbum.numberFiles + 1
             return photo 
     def upload_local_video(self,  subAlbum, mimeType):
@@ -394,7 +415,7 @@ class FileEntry:
             subAlbum.numberFiles = subAlbum.numberFiles + 1
             return photo
     def addMetadata(self, metadata):
-            metadata.summary = atom.Summary(os.path.relpath(self.path,self.album.rootPath), summary_type='text')
+            metadata.summary = atom.Summary(text=os.path.relpath(self.path,self.album.rootPath), summary_type='text')
             metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
     
 # Method to translate directory name to an album name   
@@ -493,7 +514,8 @@ def repeat(function,  description, onFailRethrow):
                 print ("Trying %s attempt %s" % (description, attempt) )    
             return function()
         except Exception,  e:
-            exc_info = e
+            if exc_info == None:
+                    exc_info = e
             # FIXME - to try and stop 403 token expired
             time.sleep(6)
             gd_client.ProgrammaticLogin()
@@ -532,6 +554,7 @@ parser.add_argument("-f","--format", type=convertFormat,  default="photo",  help
 parser.add_argument("-s","--skip",  nargs='*',  default=[],  help="Skip files or folders using a list of glob expressions.")
 parser.add_argument("--shrink", default=False,  action='store_true',   help="Shrink to max free google size (may cause problems with -c2 and maybe even -c1. Please report.")
 parser.add_argument("--purge", default=False,  action='store_true',   help="Purge empty web filders")
+parser.add_argument("--noupdatealbummetadata",  default=False,  action='store_true',    help="Disable the updating of album metadata")
 parser.add_argument("--allowDelete",  type=convertAllowDelete,  default="neither",   help="Are we allowed to do delete operations: %s" % list(allowDeleteOptions))
 parser.add_argument("-r", "--replace", default=False,   help="Replacement pattern. Search string is seperated by a pipe from replace string (ex: '-| '")
 for comparison in Comparisons:
@@ -552,6 +575,7 @@ rootDirs = args.directory # set the directory you want to start from
 
 albumNaming = args.naming
 mode = args.mode
+noupdatealbummetadata = args.noupdatealbummetadata
 for comparison in Comparisons:
     r = getattr(args, "override:%s"%comparison, None)
     if r:
