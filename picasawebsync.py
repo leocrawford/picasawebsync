@@ -362,7 +362,7 @@ class FileEntry:
             while (self.album.webAlbumIndex<len(self.album.webAlbum) and self.album.webAlbum[self.album.webAlbumIndex].numberFiles >= 999):
                 self.album.webAlbumIndex = self.album.webAlbumIndex + 1                        
             if self.album.webAlbumIndex>=len(self.album.webAlbum):
-                subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath), 0)
+                subAlbum = WebAlbum(gd_client.InsertAlbum(title=Albums.createAlbumName(self.album.getAlbumName(), self.album.webAlbumIndex), access='private', summary='synced from '+self.album.rootPath+' using github.com/leocrawford/picasawebsync'), 0)
                 self.album.webAlbum.append(subAlbum)
                 if verbose:
                     print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
@@ -394,7 +394,7 @@ class FileEntry:
             subAlbum.numberFiles = subAlbum.numberFiles + 1
             return photo
     def addMetadata(self, metadata):
-            metadata.summary = atom.Summary(text='synced from '+self.path, summary_type='text')
+            metadata.summary = atom.Summary(os.path.relpath(self.path,self.album.rootPath), summary_type='text')
             metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
     
 # Method to translate directory name to an album name   
