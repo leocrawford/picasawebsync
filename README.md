@@ -20,7 +20,7 @@ Currently it supports:
 * Cross platform (python based)
 * Works on headless systems
 * Add maximum size for videos to save slow failed uploads
-* Option to shrink (reduce) photos to the 2048x2048 pixel limit imposed by google (may stop some of the sync capabilities from working)
+* Option to shrink (reduce) photos to the 2048x2048 pixel limit imposed by google (may stop some of the sync capabilities from working). If jhead ( http://www.sentex.net/~mwandel/jhead/ ) is installed and accessible via the path environment variable, exif information is copied from the original to the resized image.
 
 Soon to be supported:
 

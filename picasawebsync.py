@@ -19,11 +19,32 @@ import time
 import fnmatch
 import tempfile
 import Image
+from subprocess import call
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
 
 # Global used for a temp directory
 gTempDir = ''
+
+def which(program):
+    import os
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
+jHead = which('jhead')
 
 def getTempPath(localPath):
   baseName = os.path.basename(localPath)
@@ -44,6 +65,8 @@ def shrinkIfNeeded(path):
                 print "Shrinking " + path
                 im.thumbnail((PICASA_MAX_FREE_IMAGE_DIMENSION, PICASA_MAX_FREE_IMAGE_DIMENSION), Image.ANTIALIAS)
                 im.save(imagePath, "JPEG")
+                if (jHead is not None):
+                    call(["jhead", "-te", path, imagePath])
                 return imagePath
         except IOError:
             print "cannot create thumbnail for '%s' - using full size image" % path
