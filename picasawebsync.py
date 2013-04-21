@@ -245,10 +245,8 @@ class AlbumEntry:
             date = exif.time.text
             if self.earliestDate == None or date < self.earliestDate:
                 self.earliestDate = date
-            print self.earliestDate 
     def writeDate(self):
         if self.earliestDate != None and noupdatealbummetadata == False:
-            print "Writing earliest date as : "+self.earliestDate
             for a in self.webAlbum:
                 album = a.getEditObject()
                 album.timestamp = gdata.photos.Timestamp(text=self.earliestDate) # "%d000" % time.mktime((2010, 02, 03, 12, 00, 00, -1, -1, -1)))
