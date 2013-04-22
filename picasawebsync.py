@@ -208,7 +208,7 @@ class Albums:
                             repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
                 actionCounts[mode[changed]]+=1
                 count += 1
-            album.writeDate()
+            repeat(lambda:album.writeDate(), "Update album metadata",False)
         print("Finished transferring files. Total files found %s, composed of %s" % (count, str(actionCounts)))
     @staticmethod 
     def createAlbumName(name,  index):
