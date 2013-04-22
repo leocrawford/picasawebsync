@@ -22,22 +22,12 @@ import Image
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
 
-# Global used for a temp directory
-gTempDir = ''
-
-def getTempPath(localPath):
-  baseName = os.path.basename(localPath)
-  global gTempDir
-  if gTempDir == '':
-    gTempDir = tempfile.mkdtemp('imageshrinker')
-  tempPath = os.path.join(gTempDir, baseName)
-  return tempPath
-
 # used https://github.com/jackpal/picasawebuploader/blob/master/main.py and 
 # http://stackoverflow.com/questions/273946/how-do-i-resize-an-image-using-pil-and-maintain-its-aspect-ratio
 def shrinkIfNeeded(path):
     if args.shrink:
-        imagePath = getTempPath(path)
+        imagePath = tempfile.NamedTemporaryFile() 
+        print imagePath.name
         try:     
             im = Image.open(path)
             if (im.size[0] > PICASA_MAX_FREE_IMAGE_DIMENSION  or im.size[1] > PICASA_MAX_FREE_IMAGE_DIMENSION):
