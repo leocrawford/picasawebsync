@@ -249,8 +249,12 @@ class AlbumEntry:
         if self.earliestDate != None and noupdatealbummetadata == False:
             for a in self.webAlbum:
                 album = a.getEditObject()
-                album.timestamp = gdata.photos.Timestamp(text=self.earliestDate) # "%d000" % time.mktime((2010, 02, 03, 12, 00, 00, -1, -1, -1)))
-                gd_client.Put(album, album.GetEditLink().href, converter=gdata.photos.AlbumEntryFromString)
+                album.timestamp = gdata.photos.Timestamp(text=self.earliestDate) 
+                edit_link = album.GetEditLink()
+                if edit_link == None:
+                    print "Warning: Null edit link from "+a.albumTitle+" so skipping metadata update"
+                else:
+                    gd_client.Put(album, edit_link.href, converter=gdata.photos.AlbumEntryFromString)
     def __str__(self):
         return (self.getAlbumName()+" under "+self.rootPath+" "+str(len(self.entries))+" entries "+\
             ["exists","doesn't exist"][not self.webAlbum]+" online")
