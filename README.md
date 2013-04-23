@@ -118,43 +118,76 @@ For each mode there are a set of events (left) and actions (right). When the eve
 
 If you want to simply see what events are triggered run with report. If you want to simulate a run use the -t or --test option
 
-    UploadOnlyActions = {
-            Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-            Comparisons.DIFFERENT:Actions.REPORT, 
-            Comparisons.SAME:Actions.SILENT, 
-            Comparisons.UNKNOWN:Actions.REPORT, 
-            Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-            Comparisons.REMOTE_ONLY:Actions.REPORT}
-    DownloadOnlyActions = {
-            Comparisons.REMOTE_OLDER:Actions.REPORT, 
-            Comparisons.DIFFERENT:Actions.DOWNLOAD_REMOTE, 
-            Comparisons.SAME:Actions.SILENT, 
-            Comparisons.UNKNOWN:Actions.REPORT, 
-            Comparisons.LOCAL_ONLY:Actions.REPORT, 
-            Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
-    PassiveActions = {
-            Comparisons.REMOTE_OLDER:Actions.REPORT, 
-            Comparisons.DIFFERENT:Actions.REPORT, 
-            Comparisons.SAME:Actions.SILENT, 
-            Comparisons.UNKNOWN:Actions.REPORT, 
-            Comparisons.LOCAL_ONLY:Actions.REPORT, 
-            Comparisons.REMOTE_ONLY:Actions.REPORT}        
-    RepairActions= {
-            Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-            Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-            Comparisons.SAME:Actions.SILENT,  
-            Comparisons.UNKNOWN:Actions.UPDATE_REMOTE_METADATA, 
-            Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-            Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
-    SyncActions= {
-            Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-            Comparisons.DIFFERENT:Actions.REPORT, 
-            Comparisons.SAME:Actions.SILENT,  
-            Comparisons.UNKNOWN:Actions.REPORT, 
-            Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-            Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+UploadOnlyActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}
+DownloadOnlyActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPORT, 
+        Comparisons.DIFFERENT:Actions.DOWNLOAD_REMOTE, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.REPORT, 
+        Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+PassiveActions = {
+        Comparisons.REMOTE_OLDER:Actions.REPORT, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT, 
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.REPORT, 
+        Comparisons.REMOTE_ONLY:Actions.REPORT}        
+RepairActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.SAME:Actions.SILENT,  
+        Comparisons.UNKNOWN:Actions.UPDATE_REMOTE_METADATA, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
+SyncActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPORT, 
+        Comparisons.SAME:Actions.SILENT,  
+        Comparisons.UNKNOWN:Actions.REPORT, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+SyncUploadActions= {
+        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.SAME:Actions.SILENT,  
+        Comparisons.UNKNOWN:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+        Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
 
+#### Comparisons
 
+Two files with an identical name are considered to be the same file, but in order to evaluate whether the the file has changed (and potentially needs to be re-uploaded) there are three approaches that can be used:
+
+1. Date of last update
+2. Filesize
+3. Hash (expensive operation as the fille needs to be re-hashed locally on every scan)
+
+Therefore the default is to use a combination of 1 and 2. Other options are set using and and operation, as below:
+
+    -c 1 # Date
+    -c 2 # Filesize
+    -c 3 # Date and filesize (default_
+    -c 4 # Hash
+    -c 5 # Hash and date
+    -c 6 # hash and filesize
+    -c 7 # date filesize and hash
+
+### Examples
+
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload # upload any files from local that are missing on remote or different. Report remote files that are not local
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload --allowDelete remote # upload any files from local that are missing on remote or different. Delete remote files that are not local
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload --allowDelete remote --override:SAME UPDATE_REMOTE_METADATA --noupdatealbummetadata # As above bus also update metadata for each remote item, this also causes album metadata to be updated (so album dates can be refreshed)
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload -c1 # upload any files from local that are missing on remote or different (different determined by file date only). Report remote files that are not local.   
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload -c5 # upload any files from local that are missing on remote or different (different determined by file date, size and hash). Report remote files that are not local.   
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m downloadOnly # download any remote files that aren't local or are different, unless known to be older (in which case report)
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m downloadOnly --override:REMOTE_OLDER DOWNLOAD_REMOTE # download any remote files that aren't local or are different, even if known to be older    
 
 
 
