@@ -118,48 +118,48 @@ For each mode there are a set of events (left) and actions (right). When the eve
 
 If you want to simply see what events are triggered run with report. If you want to simulate a run use the -t or --test option
 
-UploadOnlyActions = {
-        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.DIFFERENT:Actions.REPORT, 
-        Comparisons.SAME:Actions.SILENT, 
-        Comparisons.UNKNOWN:Actions.REPORT, 
-        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-        Comparisons.REMOTE_ONLY:Actions.REPORT}
-DownloadOnlyActions = {
-        Comparisons.REMOTE_OLDER:Actions.REPORT, 
-        Comparisons.DIFFERENT:Actions.DOWNLOAD_REMOTE, 
-        Comparisons.SAME:Actions.SILENT, 
-        Comparisons.UNKNOWN:Actions.REPORT, 
-        Comparisons.LOCAL_ONLY:Actions.REPORT, 
-        Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
-PassiveActions = {
-        Comparisons.REMOTE_OLDER:Actions.REPORT, 
-        Comparisons.DIFFERENT:Actions.REPORT, 
-        Comparisons.SAME:Actions.SILENT, 
-        Comparisons.UNKNOWN:Actions.REPORT, 
-        Comparisons.LOCAL_ONLY:Actions.REPORT, 
-        Comparisons.REMOTE_ONLY:Actions.REPORT}        
-RepairActions= {
-        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.SAME:Actions.SILENT,  
-        Comparisons.UNKNOWN:Actions.UPDATE_REMOTE_METADATA, 
-        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-        Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
-SyncActions= {
-        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.DIFFERENT:Actions.REPORT, 
-        Comparisons.SAME:Actions.SILENT,  
-        Comparisons.UNKNOWN:Actions.REPORT, 
-        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-        Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
-SyncUploadActions= {
-        Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.SAME:Actions.SILENT,  
-        Comparisons.UNKNOWN:Actions.REPLACE_REMOTE_WITH_LOCAL, 
-        Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
-        Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
+    UploadOnlyActions = {
+            Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.DIFFERENT:Actions.REPORT, 
+            Comparisons.SAME:Actions.SILENT, 
+            Comparisons.UNKNOWN:Actions.REPORT, 
+            Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+            Comparisons.REMOTE_ONLY:Actions.REPORT}
+    DownloadOnlyActions = {
+            Comparisons.REMOTE_OLDER:Actions.REPORT, 
+            Comparisons.DIFFERENT:Actions.DOWNLOAD_REMOTE, 
+            Comparisons.SAME:Actions.SILENT, 
+            Comparisons.UNKNOWN:Actions.REPORT, 
+            Comparisons.LOCAL_ONLY:Actions.REPORT, 
+            Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+    PassiveActions = {
+            Comparisons.REMOTE_OLDER:Actions.REPORT, 
+            Comparisons.DIFFERENT:Actions.REPORT, 
+            Comparisons.SAME:Actions.SILENT, 
+            Comparisons.UNKNOWN:Actions.REPORT, 
+            Comparisons.LOCAL_ONLY:Actions.REPORT, 
+            Comparisons.REMOTE_ONLY:Actions.REPORT}        
+    RepairActions= {
+            Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.SAME:Actions.SILENT,  
+            Comparisons.UNKNOWN:Actions.UPDATE_REMOTE_METADATA, 
+            Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+            Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
+    SyncActions= {
+            Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.DIFFERENT:Actions.REPORT, 
+            Comparisons.SAME:Actions.SILENT,  
+            Comparisons.UNKNOWN:Actions.REPORT, 
+            Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+            Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+    SyncUploadActions= {
+            Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.SAME:Actions.SILENT,  
+            Comparisons.UNKNOWN:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+            Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
 
 #### Comparisons
 
@@ -173,7 +173,7 @@ Therefore the default is to use a combination of 1 and 2. Other options are set 
 
     -c 1 # Date
     -c 2 # Filesize
-    -c 3 # Date and filesize (default_
+    -c 3 # Date and filesize (default)
     -c 4 # Hash
     -c 5 # Hash and date
     -c 6 # hash and filesize
