@@ -33,10 +33,13 @@ Soon to be supported:
 ## Installation
 
 1. Install you have python >=2.7 <3 installed (these version numbers are based on some assumptions, so I could be wrong), make sure it has SSL support enabled
-2. Install PIL package
-    debian/ubuntu way
-
-    apt-get install python-imaging
+2. Install PIL package (text taken from http://gausssum.sourceforge.net/DocBook/ch01s03.html)
+    You can get PIL 1.1.7 from here under "Python Imaging Library 1.1.7 Source Kit (all platforms)". This should be untarred into a folder in the usual way, using '
+    tar zxvf Imaging-1.1.7.tar.gz'. 
+    Next, go into the folder created and (as root) install the package as follows: 
+    python setup.py install
+    If you are using Debian Linux, the Python Imaging Library will be downloaded and installed if you issue the following command as root: 
+    apt-get install python-imaging python-imaging-tk
 3. Add the gdata packages 
 
     cd /tmp
