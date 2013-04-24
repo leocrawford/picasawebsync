@@ -33,10 +33,18 @@ Soon to be supported:
 ## Installation
 
 1. Install you have python >=2.7 <3 installed (these version numbers are based on some assumptions, so I could be wrong), make sure it has SSL support enabled
-2. Install PIL package
-    debian/ubuntu way
-
-    apt-get install python-imaging
+2. Install PIL package (text taken from http://gausssum.sourceforge.net/DocBook/ch01s03.html)
+    You can get PIL 1.1.7 from here under "Python Imaging Library 1.1.7 Source Kit (all platforms)". This should be untarred into a folder in the usual way, using
+    
+    tar zxvf Imaging-1.1.7.tar.gz
+    
+    Next, go into the folder created and (as root) install the package as follows: 
+    
+    python setup.py install
+    
+    If you are using Debian Linux, the Python Imaging Library will be downloaded and installed if you issue the following command as root: 
+    
+    apt-get install python-imaging python-imaging-tk
 3. Add the gdata packages 
 
     cd /tmp
@@ -145,8 +153,41 @@ If you want to simply see what events are triggered run with report. If you want
             Comparisons.UNKNOWN:Actions.REPORT, 
             Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
             Comparisons.REMOTE_ONLY:Actions.DOWNLOAD_REMOTE}
+    SyncUploadActions= {
+            Comparisons.REMOTE_OLDER:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.DIFFERENT:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.SAME:Actions.SILENT,  
+            Comparisons.UNKNOWN:Actions.REPLACE_REMOTE_WITH_LOCAL, 
+            Comparisons.LOCAL_ONLY:Actions.UPLOAD_LOCAL, 
+            Comparisons.REMOTE_ONLY:Actions.DELETE_REMOTE}
 
+#### Comparisons
 
+Two files with an identical name are considered to be the same file, but in order to evaluate whether the the file has changed (and potentially needs to be re-uploaded) there are three approaches that can be used:
+
+1. Date of last update
+2. Filesize
+3. Hash (expensive operation as the fille needs to be re-hashed locally on every scan)
+
+Therefore the default is to use a combination of 1 and 2. Other options are set using and and operation, as below:
+
+    -c 1 # Date
+    -c 2 # Filesize
+    -c 3 # Date and filesize (default)
+    -c 4 # Hash
+    -c 5 # Hash and date
+    -c 6 # hash and filesize
+    -c 7 # date filesize and hash
+
+### Examples
+
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload # upload any files from local that are missing on remote or different. Report remote files that are not local
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload --allowDelete remote # upload any files from local that are missing on remote or different. Delete remote files that are not local
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload --allowDelete remote --override:SAME UPDATE_REMOTE_METADATA --noupdatealbummetadata # As above bus also update metadata for each remote item, this also causes album metadata to be updated (so album dates can be refreshed)
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload -c1 # upload any files from local that are missing on remote or different (different determined by file date only). Report remote files that are not local.   
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m syncUpload -c5 # upload any files from local that are missing on remote or different (different determined by file date, size and hash). Report remote files that are not local.   
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m downloadOnly # download any remote files that aren't local or are different, unless known to be older (in which case report)
+    ./picasawebsync.py -u <email> -p <password> -d testdata -m downloadOnly --override:REMOTE_OLDER DOWNLOAD_REMOTE # download any remote files that aren't local or are different, even if known to be older    
 
 
 
