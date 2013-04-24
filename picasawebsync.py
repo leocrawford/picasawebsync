@@ -23,14 +23,11 @@ from subprocess import call
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
 
-# Global used for a temp directory
-gTempDir = ''
-
 def which(program):
     import os
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
+    
     fpath, fname = os.path.split(program)
     if fpath:
         if is_exe(program):
@@ -41,25 +38,16 @@ def which(program):
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
                 return exe_file
-
+    
     return None
 
 jHead = which('jhead')
-
-def getTempPath(localPath):
-  baseName = os.path.basename(localPath)
-  global gTempDir
-  if gTempDir == '':
-    gTempDir = tempfile.mkdtemp('imageshrinker')
-  tempPath = os.path.join(gTempDir, baseName)
-  return tempPath
 
 # used https://github.com/jackpal/picasawebuploader/blob/master/main.py and 
 # http://stackoverflow.com/questions/273946/how-do-i-resize-an-image-using-pil-and-maintain-its-aspect-ratio
 def shrinkIfNeeded(path):
     if args.shrink:
-        imagePath = tempfile.NamedTemporaryFile() 
-        print imagePath.name
+        imagePath = tempfile.NamedTemporaryFile(delete=False) 
         try:     
             im = Image.open(path)
             if (im.size[0] > PICASA_MAX_FREE_IMAGE_DIMENSION  or im.size[1] > PICASA_MAX_FREE_IMAGE_DIMENSION):
@@ -67,11 +55,11 @@ def shrinkIfNeeded(path):
                 im.thumbnail((PICASA_MAX_FREE_IMAGE_DIMENSION, PICASA_MAX_FREE_IMAGE_DIMENSION), Image.ANTIALIAS)
                 im.save(imagePath, "JPEG")
                 if (jHead is not None):
-                    call(["jhead", "-te", path, imagePath])
-                return imagePath
+                    call (["jhead", "-q", "-te", path, imagePath.name])
+                return imagePath.name
         except IOError:
             print "cannot create thumbnail for '%s' - using full size image" % path
-    return path
+    return None
       
  
 # Borrowed from http://www.daniweb.com/software-development/python/code/216610/timing-a-function-python
@@ -428,7 +416,13 @@ class FileEntry:
             metadata = gdata.photos.PhotoEntry()
             metadata.title=atom.Title(text=name) # have to quote as certain charecters, e.g. / seem to break it
             self.addMetadata(metadata)
-            photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, shrinkIfNeeded(self.path), mimeType) 
+	    shrinkFile=shrinkIfNeeded(self.path)
+	    currentFile=self.path
+            if (shrinkFile is not None):
+		currentFile=shrinkFile
+            photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, currentFile, mimeType) 
+            if (shrinkFile is not None):
+                os.remove(shrinkFile)
             self.album.considerEarliestDate(photo.exif)
             subAlbum.numberFiles = subAlbum.numberFiles + 1
             return photo 
