@@ -230,7 +230,7 @@ class Albums:
                             repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],  file.getFullName(), changed ), False)
                 actionCounts[mode[changed]]+=1
                 count += 1
-            repeat(lambda:album.writeDate(), "Update album metadata",False)
+            album.writeDate()
         print("Finished transferring files. Total files found %s, composed of %s" % (count, str(actionCounts)))
     @staticmethod 
     def createAlbumName(name,  index):
@@ -259,14 +259,18 @@ class AlbumEntry:
                 self.earliestDate = date
     def writeDate(self):
         if self.earliestDate != None and noupdatealbummetadata == False:
-            for a in self.webAlbum:
-                album = a.getEditObject()
-                album.timestamp = gdata.photos.Timestamp(text=self.earliestDate) 
-                edit_link = album.GetEditLink()
-                if edit_link == None:
-                    print "Warning: Null edit link from "+a.albumTitle+" so skipping metadata update"
-                else:
-                    gd_client.Put(album, edit_link.href, converter=gdata.photos.AlbumEntryFromString)
+	    if verbose:
+	        print "Attempting to write date ("+self.earliestDate+") to album "+self.albumName
+                for a in self.webAlbum:
+                    album = a.getEditObject()
+                    album.timestamp = gdata.photos.Timestamp(text=self.earliestDate) 
+                    edit_link = album.GetEditLink()
+                    if edit_link == None:
+                        print "Warning: Null edit link from "+a.albumTitle+" so skipping metadata update"
+                    else:
+                        repeat(lambda:gd_client.Put(album, edit_link.href, converter=gdata.photos.AlbumEntryFromString), "Update album metadata for "+a.albumTitle,False)
+            else:
+                print "Not Attempting to write date to album "+self.albumName
     def __str__(self):
         return (self.getAlbumName()+" under "+self.rootPath+" "+str(len(self.entries))+" entries "+\
             ["exists","doesn't exist"][not self.webAlbum]+" online")
@@ -317,6 +321,7 @@ class FileEntry:
             self.remoteHash = webReference.checksum.text
             self.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",webReference.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
             self.remoteSize = int(webReference.size.text)
+	    print self.name+" has updated date %s" %  time.asctime(time.localtime(self.remoteDate))
         else:
             self.webUrl = None
     def getEditObject(self):
@@ -344,10 +349,11 @@ class FileEntry:
             if self.isWeb():
             # filesize (2), date (1),  hash (4) 
                 if compareattributes & 1:
-                    if self.remoteDate < self.getLocalDate() + 60:
-                        # print "%s: remote=%s and local=%s" % (self.getFullName(), time.gmtime(self.remoteDate), time.gmtime(self.getLocalDate()))
+		    # print "%s: remote=%s and local=%s" % (self.getFullName(), time.gmtime(self.remoteDate), time.gmtime(self.getLocalDate()))
+                    if self.remoteDate < self.getLocalDate() + 60:    
                         return Comparisons.REMOTE_OLDER     
                 if compareattributes & 2: 
+		    print "%s: remote size=%s and local=%s" % (self.getFullName(),self.remoteSize,self.getLocalSize())
                     if self.remoteSize != self.getLocalSize():
                         return Comparisons.DIFFERENT        
                 if compareattributes & 4:                
@@ -436,7 +442,9 @@ class FileEntry:
             return photo
     def addMetadata(self, metadata):
             metadata.summary = atom.Summary(text=os.path.relpath(self.path,self.album.rootPath), summary_type='text')
-            metadata.checksum= gdata.photos.Checksum(text=self.getLocalHash())
+            metadata.checksum = gdata.photos.Checksum(text=self.getLocalHash())
+	    if verbose and (metadata == None):
+	        print "Warning: "+self.name+" does not have a date set"
     
 # Method to translate directory name to an album name   
     
