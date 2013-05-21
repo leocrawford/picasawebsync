@@ -190,7 +190,10 @@ class Albums:
         webAlbum = WebAlbum(webAlbum, int(photos.total_results.text))
         foundAlbum.webAlbum.append(webAlbum)
         for photo in photos.entry:
-            photoTitle=urllib.unquote(photo.title.text)
+            if photo.title.text == None:
+                photoTitle=""
+            else:
+                photoTitle=urllib.unquote(photo.title.text)
             if not re.match(excludes, photoTitle):
                 if photoTitle in foundAlbum.entries:
                     entry = foundAlbum.entries[photoTitle]
