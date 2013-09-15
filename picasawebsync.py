@@ -133,9 +133,7 @@ class Albums:
         fileAlbums = {}
         for rootDir in self.rootDirs:
             for dirName,subdirList,fileList in os.walk( rootDir ) :
-                print subdirList 
                 subdirList[:] = [d for d in subdirList if not re.match(excludes, os.path.join(dirName, d))]
-                print subdirList
                 albumName = convertDirToAlbum(albumNaming, rootDir,  dirName, replace, namingextract)
                 # have we already seen this album? If so append our path to it's list
                 if albumName in fileAlbums:
@@ -181,6 +179,7 @@ class Albums:
                     print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
     # @print_timing
     def scanWebPhotos(self, foundAlbum, webAlbum,  deletedups, excludes):
+        # bit of a hack, but can't see anything in api to do it.
         photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()+ "&imgmax=d"), "list photos in album %s" % foundAlbum.albumName, True)
         webAlbum = WebAlbum(webAlbum, int(photos.total_results.text))
         foundAlbum.webAlbum.append(webAlbum)
