@@ -5,17 +5,11 @@ import gdata.media
 import gdata.geo
 import os
 import re
-import pprint
-import sys
 import argparse
 import mimetypes
 import hashlib
-import urllib
 import time
-import datetime
 import urllib
-import json
-import time
 import fnmatch
 import tempfile
 import Image
@@ -24,7 +18,6 @@ from subprocess import call
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
 
 def which(program):
-    import os
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
     
