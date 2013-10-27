@@ -408,7 +408,7 @@ class FileEntry:
             if mimeType in supportedImageFormats:
                 photo = self.upload_local_img(subAlbum, mimeType)   
             if mimeType in supportedVideoFormats:            
-                if self.getLocalSize() > 104857600:
+                if self.getLocalSize() > 1073741824:
                     print ("Not uploading %s because it exceeds maximum file size" % self.path)
                 else:
                     photo = self.upload_local_video(subAlbum, mimeType) 
