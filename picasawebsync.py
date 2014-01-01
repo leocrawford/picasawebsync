@@ -13,6 +13,7 @@ import urllib
 import fnmatch
 import tempfile
 import Image
+import traceback
 from subprocess import call
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
@@ -551,13 +552,45 @@ def repeat(function,  description, onFailRethrow):
         print ("WARNING: Failed to %s. This was due to %s" % (description, exc_info))
         if onFailRethrow:
             raise exc_info
+            
+def oauthLogin(gd_client):
+    consumer_key = '1071578698912-8dq8g4ojojb2rihp6k3ql27tq8m5lc9s.apps.googleusercontent.com'
+    consumer_secret = 'zTvZBSDBFEIf4EovT04cXzjB'
+    
+    filename = os.path.join(os.path.expanduser('~'), ".picasawebsync")
+    gd_client.SetOAuthInputParameters(gdata.auth.OAuthSignatureMethod.HMAC_SHA1,consumer_key, consumer_secret=consumer_secret)
+    try:
+        f = open(filename, 'r') 
+        key = f.readline().rstrip()
+        secret = f.readline().rstrip()
+        f.close()
+        oauth_input_params = gdata.auth.OAuthInputParams(gdata.auth.OAuthSignatureMethod.HMAC_SHA1, consumer_key, consumer_secret=consumer_secret)
+        # the token key and secret should be recalled from your database
+        oauth_token = gdata.auth.OAuthToken(key=key, secret=secret, scopes='https://picasaweb.google.com/data/', oauth_input_params=oauth_input_params)
+        gd_client.SetOAuthToken(oauth_token)
+        gd_client.GetUserFeed()
+    except:
+        print 'Unable to use existing certs, so we need to (re)authenticate with google..'
+        traceback.print_exc(file=sys.stdout)
+        request_token = gd_client.FetchOAuthRequestToken()
+        gd_client.SetOAuthToken(request_token)
+        auth_url = gd_client.GenerateOAuthAuthorizationURL()
+        print 'Authorization URL: %s' % auth_url
+        raw_input('Manually go to the above URL and authenticate.'
+                  'Press a key after authorization.')
+        token = gd_client.UpgradeToOAuthAccessToken()
+        print dir(token)
+        f = open(filename, 'w')
+        f.write (token.key+"\n")
+        f.write (token.secret+"\n")
+        f.close()
 
 # start of the program
 
 defaultNamingFormat=["{0}", "{1} ({0})"]
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-u","--username", help="Your picassaweb username")
+parser.add_argument("-u","--username", help="Your picassaweb username (leave blank for oauth)")
 parser.add_argument("-p","--password", help="Your picassaweb password")
 parser.add_argument("-d","--directory",  nargs='+',help="The local directories. The first of these will be used for any downloaded items")
 parser.add_argument("-n","--naming", default=defaultNamingFormat,  nargs='+',help="Expression to convert directory names to web album names. Formed as a ~ seperated list of substitution strings, "
@@ -590,10 +623,14 @@ args = parser.parse_args()
 chosenFormats = args.format
 
 gd_client = gdata.photos.service.PhotosService()
-gd_client.email = args.username # Set your Picasaweb e-mail address...
-gd_client.password = args.password 
-gd_client.source = 'api-sample-google-com'
-gd_client.ProgrammaticLogin()
+
+if args.username:
+    gd_client.email = args.username # Set your Picasaweb e-mail address...
+    gd_client.password = args.password 
+    gd_client.source = 'api-sample-google-com'
+    gd_client.ProgrammaticLogin()
+else:
+    oauthLogin(gd_client)
 verbose=args.verbose
 
 rootDirs = args.directory # set the directory you want to start from

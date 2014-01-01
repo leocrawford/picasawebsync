@@ -24,10 +24,10 @@ Currently it supports:
 ** If jhead ( http://www.sentex.net/~mwandel/jhead/ ) is installed and accessible via the path environment variable, exif information is copied from the original to the resized image.
 * Write album date (based on the earliest date form the set of images within it). 
 * Meta-data repair (e.g. album metadata, or image hash and date)
+* Oauth as a method of authentication which doesn't require the password to be sent and stored in clear
 
 Soon to be supported:
 
-* Support for browser based log-on so you don't need to tell the app your details
 * A better installation process. 
 * Handle mutiple files of same name, which are flattened into the same remote directory
 
