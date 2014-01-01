@@ -571,7 +571,6 @@ def oauthLogin(gd_client):
         gd_client.GetUserFeed()
     except:
         print 'Unable to use existing certs, so we need to (re)authenticate with google..'
-        traceback.print_exc(file=sys.stdout)
         request_token = gd_client.FetchOAuthRequestToken()
         gd_client.SetOAuthToken(request_token)
         auth_url = gd_client.GenerateOAuthAuthorizationURL()
