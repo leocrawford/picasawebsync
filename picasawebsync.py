@@ -168,6 +168,8 @@ class Albums:
         webAlbums = gd_client.GetUserFeed()
         for webAlbum in webAlbums.entry:
                 webAlbumTitle = Albums.flatten(webAlbum.title.text)
+                if verbose:
+                    print ('Scanning web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
                 # print "Album %s is %s in %s" % (webAlbumTitle, webAlbumTitle in self.albums,  ",".join(self.albums))
                 if webAlbumTitle in self.albums:
                     foundAlbum = self.albums[webAlbumTitle]
@@ -176,9 +178,9 @@ class Albums:
                     album = AlbumEntry(os.path.join(self.rootDirs[0], webAlbum.title.text),  webAlbum.title.text)
                     self.albums[webAlbum.title.text] = album
                     self.scanWebPhotos(album, webAlbum,  deletedups, excludes)
-                if verbose:
-                    print ('Scanned web-album %s (containing %s files)' % (webAlbum.title.text, webAlbum.numphotos.text))
-    # @print_timing
+   
+
+ # @print_timing
     def scanWebPhotos(self, foundAlbum, webAlbum,  deletedups, excludes):
         # bit of a hack, but can't see anything in api to do it.
         photos = repeat(lambda: gd_client.GetFeed(webAlbum.GetPhotosUri()+ "&imgmax=d"), "list photos in album %s" % foundAlbum.albumName, True)
@@ -544,7 +546,8 @@ def repeat(function,  description, onFailRethrow):
                     exc_info = e
             # FIXME - to try and stop 403 token expired
             time.sleep(6)
-            gd_client.ProgrammaticLogin()
+            if args.username:            
+                    gd_client.ProgrammaticLogin()
             continue
         else:
             break
@@ -567,7 +570,7 @@ def oauthLogin(gd_client):
         oauth_input_params = gdata.auth.OAuthInputParams(gdata.auth.OAuthSignatureMethod.HMAC_SHA1, consumer_key, consumer_secret=consumer_secret)
         # the token key and secret should be recalled from your database
         oauth_token = gdata.auth.OAuthToken(key=key, secret=secret, scopes='https://picasaweb.google.com/data/', oauth_input_params=oauth_input_params)
-        gd_client.SetOAuthToken(oauth_token)
+	gd_client.SetOAuthToken(oauth_token)
         gd_client.GetUserFeed()
     except:
         print 'Unable to use existing certs, so we need to (re)authenticate with google..'
@@ -621,7 +624,7 @@ args = parser.parse_args()
 
 chosenFormats = args.format
 
-gd_client = gdata.photos.service.PhotosService()
+gd_client = gdata.photos.service.PhotosService(email='default')
 
 if args.username:
     gd_client.email = args.username # Set your Picasaweb e-mail address...
