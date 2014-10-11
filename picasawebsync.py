@@ -226,10 +226,10 @@ class Albums:
 					print ("%s (%s) #%s/%s - %s" % (mode[changed],changed, str(count),str(size),file.getFullName()))
 				if not test:
 					if mode[changed]==Actions.DELETE_LOCAL and not allowDelete[0] :
-						print "Not deleteing local file because permissions not granted using allowDelete"
+						print ("Not deleteing local file %s because permissions not granted using allowDelete" % file.getFullName())
 					else:
 						if mode[changed]==Actions.DELETE_REMOTE and not allowDelete[1] :
-							print "Not deleteing remote file because permissions not granted using allowDelete"
+							print ("Not deleteing remote file %s because permissions not granted using allowDelete" % file.getFullName())
 						else:						
 							repeat(lambda: getattr(file, mode[changed].lower())(changed), "%s on %s identified as %s" % (mode[changed],	 file.getFullName(), changed ), False)
 				actionCounts[mode[changed]]+=1
@@ -357,7 +357,8 @@ class FileEntry:
 					if self.remoteDate < self.getLocalDate() + 60:	  
 						return Comparisons.REMOTE_OLDER		
 				if compareattributes & 2: 
-					print "%s: remote size=%s and local=%s" % (self.getFullName(),self.remoteSize,self.getLocalSize())
+					if verbose:
+						print "%s: remote size=%s and local=%s" % (self.getFullName(),self.remoteSize,self.getLocalSize())
 					if self.remoteSize != self.getLocalSize():
 						return Comparisons.DIFFERENT		
 				if compareattributes & 4:				 
@@ -398,7 +399,8 @@ class FileEntry:
 		urllib.urlretrieve(url, self.path)
 		os.utime(path, (int(self.remoteDate), int(self.remoteDate)))
 	def delete_remote(self, event):
-		gd_client.Delete(self.getEditObject())		  
+		gd_client.Delete(self.getEditObject())
+		print ("Deleted %s" % self.getFullName())  
 	def upload_local(self, event):
 		mimeType = mimetypes.guess_type(self.path)[0]
 		if mimeType in chosenFormats:
