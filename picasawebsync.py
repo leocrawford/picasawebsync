@@ -14,6 +14,7 @@ import fnmatch
 import tempfile
 import Image
 import traceback
+import calendar
 from subprocess import call
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
@@ -323,7 +324,7 @@ class FileEntry:
 			self.albumid = webReference.albumid.text
 			self.webUrl = webReference.content.src
 			self.remoteHash = webReference.checksum.text
-			self.remoteDate = time.mktime(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",webReference.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
+			self.remoteDate = calendar.timegm(time.strptime( re.sub("\.[0-9]{3}Z$",".000 UTC",webReference.updated.text),'%Y-%m-%dT%H:%M:%S.000 %Z'))
 			self.remoteSize = int(webReference.size.text)
 		# print self.name+" has updated date %s" %	time.asctime(time.localtime(self.remoteDate))
 		else:
