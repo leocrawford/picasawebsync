@@ -167,17 +167,17 @@ class Albums:
             print ("Found " + str(len(fileAlbums)) + " albums on the filesystem")
         return fileAlbums;
 
-    def deleteEmptyWebAlbums(self):
-        webAlbums = gd_client.GetUserFeed()
+    def deleteEmptyWebAlbums(self, owner):
+        webAlbums = gd_client.GetUserFeed(user=owner)
         for webAlbum in webAlbums.entry:
             if int(webAlbum.numphotos.text) == 0:
                 print "Deleting empty album %s" % webAlbum.title.text
                 gd_client.Delete(webAlbum)
                 # @print_timing
 
-    def scanWebAlbums(self, deletedups, server_excludes):
+    def scanWebAlbums(self, owner, deletedups, server_excludes):
         # walk the web album finding albums there
-        webAlbums = gd_client.GetUserFeed()
+        webAlbums = gd_client.GetUserFeed(user=owner)
         for webAlbum in webAlbums.entry:
             webAlbumTitle = Albums.flatten(webAlbum.title.text)
             if re.match(server_excludes, webAlbumTitle):
@@ -712,6 +712,8 @@ parser.add_argument("--allowDelete", type=convertAllowDelete, default="neither",
                     help="Are we allowed to do delete operations: %s" % list(allowDeleteOptions))
 parser.add_argument("-r", "--replace", default=False,
                     help="Replacement pattern. Search string is seperated by a pipe from replace string (ex: '-| '")
+parser.add_argument("-o", "--owner", default="default",
+                    help="The username of the user whos albums to sync (leave blank for your own)")
 for comparison in Comparisons:
     parser.add_argument("--override:%s" % comparison, default=None,
                         help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
@@ -746,9 +748,9 @@ server_excludes = r'|'.join([fnmatch.translate(x) for x in args.skipserver]) or 
 print ("Excluding %s on client and %s on server" % (excludes, server_excludes))
 
 albums = Albums(rootDirs, albumNaming, excludes, args.replace, args.namingextract)
-albums.scanWebAlbums(args.deletedups, server_excludes)
+albums.scanWebAlbums(args.owner, args.deletedups, server_excludes)
 albums.uploadMissingAlbumsAndFiles(args.compareattributes, mode, args.test, args.allowDelete)
 
 if args.purge:
-    albums.deleteEmptyWebAlbums()
+    albums.deleteEmptyWebAlbums(args.owner)
 
