@@ -339,8 +339,10 @@ class FileEntry:
         self.name = name
         if path:
             self.path = path
+            self.type = mimetypes.guess_type(path)[0]
         else:
             self.path = os.path.join(album.rootPath, name)
+            self.type = None
         self.isLocal = isLocal
         self.localHash = None
         self.remoteHash = None
@@ -351,6 +353,7 @@ class FileEntry:
 
     def setWebReference(self, webReference):
         if webReference:
+            self.type = webReference.media.content[0].type
             self.gphoto_id = webReference.gphoto_id.text
             self.albumid = webReference.albumid.text
             self.webUrl = webReference.content.src
@@ -442,20 +445,22 @@ class FileEntry:
         self.setWebReference(gd_client.UpdatePhotoMetadata(entry))
 
     def download_remote(self, event):
-        url = self.webUrl
-        path = os.path.split(self.path)[0]
-        if not os.path.exists(path):
-            os.makedirs(path)
-        urllib.urlretrieve(url, self.path)
-        os.utime(path, (int(self.remoteDate), int(self.remoteDate)))
+        if self.type in chosenFormats:
+            url = self.webUrl
+            path = os.path.split(self.path)[0]
+            if not os.path.exists(path):
+                os.makedirs(path)
+            urllib.urlretrieve(url, self.path)
+            os.utime(path, (int(self.remoteDate), int(self.remoteDate)))
+        else:
+            print ("Skipped %s (because can't download file of type %s)." % (self.path, self.type))
 
     def delete_remote(self, event):
         gd_client.Delete(self.getEditObject())
         print ("Deleted %s" % self.getFullName())
 
     def upload_local(self, event):
-        mimeType = mimetypes.guess_type(self.path)[0]
-        if mimeType in chosenFormats:
+        if self.type in chosenFormats:
             while (self.album.webAlbumIndex < len(self.album.webAlbum) and self.album.webAlbum[
                 self.album.webAlbumIndex].numberFiles >= 999):
                 self.album.webAlbumIndex = self.album.webAlbumIndex + 1
@@ -469,17 +474,17 @@ class FileEntry:
                     print ('Created album %s to sync %s' % (subAlbum.albumTitle, self.album.rootPath))
             else:
                 subAlbum = self.album.webAlbum[self.album.webAlbumIndex]
-            if mimeType in supportedImageFormats:
-                photo = self.upload_local_img(subAlbum, mimeType)
-            if mimeType in supportedVideoFormats:
+            if self.type in supportedImageFormats:
+                photo = self.upload_local_img(subAlbum)
+            if self.type in supportedVideoFormats:
                 if self.getLocalSize() > 1073741824:
                     print ("Not uploading %s because it exceeds maximum file size" % self.path)
                 else:
-                    photo = self.upload_local_video(subAlbum, mimeType)
+                    photo = self.upload_local_video(subAlbum)
         else:
-            print ("Skipped %s (because can't upload file of type %s)." % (self.path, mimeType))
+            print ("Skipped %s (because can't upload file of type %s)." % (self.path, self.type))
 
-    def upload_local_img(self, subAlbum, mimeType):
+    def upload_local_img(self, subAlbum):
         name = urllib.quote(self.name, '')
         metadata = gdata.photos.PhotoEntry()
         metadata.title = atom.Title(text=name)  # have to quote as certain charecters, e.g. / seem to break it
@@ -488,19 +493,19 @@ class FileEntry:
         currentFile = self.path
         if (shrinkFile is not None):
             currentFile = shrinkFile
-        photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, currentFile, mimeType)
+        photo = gd_client.InsertPhoto(subAlbum.albumUri, metadata, currentFile, self.type)
         if (shrinkFile is not None):
             os.remove(shrinkFile)
         self.album.considerEarliestDate(photo.exif)
         subAlbum.numberFiles = subAlbum.numberFiles + 1
         return photo
 
-    def upload_local_video(self, subAlbum, mimeType):
+    def upload_local_video(self, subAlbum):
         name = urllib.quote(self.name, '')
         metadata = gdata.photos.VideoEntry()
         metadata.title = atom.Title(text=name)  # have to quote as certain charecters, e.g. / seem to break it
         self.addMetadata(metadata)
-        photo = gd_client.InsertVideo(subAlbum.albumUri, metadata, self.path, mimeType)
+        photo = gd_client.InsertVideo(subAlbum.albumUri, metadata, self.path, self.type)
         subAlbum.numberFiles = subAlbum.numberFiles + 1
         return photo
 
