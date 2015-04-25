@@ -353,7 +353,11 @@ class FileEntry:
 
     def setWebReference(self, webReference):
         if webReference:
-            self.type = webReference.media.content[0].type
+            for content in webReference.media.content:
+                # If we haven't found a type yet, or prioritise video type
+                if not self.type or (content.medium == 'video'):
+                    self.type = content.type
+
             self.gphoto_id = webReference.gphoto_id.text
             self.albumid = webReference.albumid.text
             self.webUrl = webReference.content.src
