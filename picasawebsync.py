@@ -449,15 +449,17 @@ class FileEntry:
         self.setWebReference(gd_client.UpdatePhotoMetadata(entry))
 
     def download_remote(self, event):
-        if self.type in chosenFormats:
+        if self.type not in chosenFormats:
+            print ("Skipped %s (because can't download file of type %s)." % (self.path, self.type))
+        elif dateLimit is not None and self.remoteDate < dateLimit:
+            print ("Skipped %s (because remote album pre %s)." % (self.path, dateLimit))
+        else:
             url = self.webUrl
             path = os.path.split(self.path)[0]
             if not os.path.exists(path):
                 os.makedirs(path)
             urllib.urlretrieve(url, self.path)
             os.utime(path, (int(self.remoteDate), int(self.remoteDate)))
-        else:
-            print ("Skipped %s (because can't download file of type %s)." % (self.path, self.type))
 
     def delete_remote(self, event):
         gd_client.Delete(self.getEditObject())
@@ -620,6 +622,10 @@ def convertFormat(string):
     return formats[string]
 
 
+def convertDate(string):
+    return time.strptime(string, '%Y-%m-%d')
+
+
 def repeat(function, description, onFailRethrow):
     exc_info = None
     for attempt in range(3):
@@ -724,12 +730,14 @@ parser.add_argument("-r", "--replace", default=False,
                     help="Replacement pattern. Search string is seperated by a pipe from replace string (ex: '-| '")
 parser.add_argument("-o", "--owner", default="default",
                     help="The username of the user whos albums to sync (leave blank for your own)")
+parser.add_argument("--dateLimit", type=convertDate, help="A date limit, before which albums are ignored.")
 for comparison in Comparisons:
     parser.add_argument("--override:%s" % comparison, default=None,
                         help="Override the action for %s from the list of %s" % (comparison, ",".join(list(Actions))))
 args = parser.parse_args()
 
 chosenFormats = args.format
+dateLimit = args.dateLimit
 
 gd_client = gdata.photos.service.PhotosService(email='default')
 
