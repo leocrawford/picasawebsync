@@ -453,7 +453,7 @@ class FileEntry:
         if self.type not in chosenFormats:
             print ("Skipped %s (because can't download file of type %s)." % (self.path, self.type))
         elif dateLimit is not None and self.remoteTimestamp < dateLimit:
-            print ("Skipped %s (because remote album pre %s)." % (self.path, dateLimit))
+            print ("Skipped %s (because remote album pre %s)." % (self.path, time.asctime(dateLimit)))
         else:
             url = self.webUrl
             path = os.path.split(self.path)[0]
