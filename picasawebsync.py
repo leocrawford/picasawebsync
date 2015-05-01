@@ -347,6 +347,7 @@ class FileEntry:
         self.localHash = None
         self.remoteHash = None
         self.remoteDate = None
+        self.remoteTimestamp = None
         self.remoteSize = None
         self.album = album
         self.setWebReference(webReference)
@@ -365,8 +366,10 @@ class FileEntry:
             self.remoteDate = calendar.timegm(
                 time.strptime(re.sub("\.[0-9]{3}Z$", ".000 UTC", webReference.updated.text),
                               '%Y-%m-%dT%H:%M:%S.000 %Z'))
+            self.remoteTimestamp = time.mktime(webReference.timestamp.datetime().timetuple())
             self.remoteSize = int(webReference.size.text)
-        # print self.name+" has updated date %s" %	time.asctime(time.localtime(self.remoteDate))
+            print self.name + " has updated date %s" % self.remoteDate
+            print self.name + " has timestamp %s" % self.remoteTimestamp
         else:
             self.webUrl = None
 
@@ -451,7 +454,7 @@ class FileEntry:
     def download_remote(self, event):
         if self.type not in chosenFormats:
             print ("Skipped %s (because can't download file of type %s)." % (self.path, self.type))
-        elif dateLimit is not None and self.remoteDate < dateLimit:
+        elif dateLimit is not None and self.remoteTimestamp < dateLimit:
             print ("Skipped %s (because remote album pre %s)." % (self.path, dateLimit))
         else:
             url = self.webUrl
