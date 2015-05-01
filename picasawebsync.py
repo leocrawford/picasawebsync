@@ -368,8 +368,6 @@ class FileEntry:
                               '%Y-%m-%dT%H:%M:%S.000 %Z'))
             self.remoteTimestamp = time.mktime(webReference.timestamp.datetime().timetuple())
             self.remoteSize = int(webReference.size.text)
-            print self.name + " has updated date %s" % self.remoteDate
-            print self.name + " has timestamp %s" % self.remoteTimestamp
         else:
             self.webUrl = None
 
