@@ -2,6 +2,12 @@
 
 This python utility will allow you to sync local directories with picasaweb. I'd appreciate feedback if you find it useful, or find problems. I run it over a 36000+ item collection on a linux box (netgear readynas v2) without problems. 
 
+NOTE: Only oauth2 is now supported, and I no longer provide my keys for this. You must follow the instructions here to generate a client_secrets.json file which must be in the same directory as picasawebsync.py
+
+The settings are:
+Application Type: Installed
+Installed Application type: Other
+
 ## Features
 
 Currently it supports:
@@ -24,7 +30,7 @@ Currently it supports:
 ** If jhead ( http://www.sentex.net/~mwandel/jhead/ ) is installed and accessible via the path environment variable, exif information is copied from the original to the resized image.
 * Write album date (based on the earliest date form the set of images within it). 
 * Meta-data repair (e.g. album metadata, or image hash and date)
-* Oauth as a method of authentication which doesn't require the password to be sent and stored in clear
+* Oauth2 as a method of authentication which doesn't require the password to be sent and stored in clear
 
 Soon to be supported:
 
@@ -71,11 +77,13 @@ If you're able to help with a better installation process please shout
 
 The minimum command is 
 
-    ./picasawebsync -u <username> -p <password> -d <one or more local directories>
+    ./picasawebsync -d <one or more local directories>
     
 Note: If python is installed in an usual place you might need to use:
 
-    python picasawebsync -u <username> -p <password> -d <one or more local directories>
+    python picasawebsync  -d <one or more local directories>
+
+In both cases you will be required to sign on to google, and paste the link back to authenticate
 
 ### The settings
 

@@ -15,6 +15,11 @@ import tempfile
 import Image
 import traceback
 import calendar
+import httplib2
+
+# from apiclient import discovery
+from oauth2client import client
+from gdata.gauth import OAuth2TokenFromCredentials
 from subprocess import call
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
@@ -563,44 +568,33 @@ def repeat(function,  description, onFailRethrow):
 		if onFailRethrow:
 			raise exc_info
 			
-def oauthLogin(gd_client):
-	consumer_key = '1071578698912-8dq8g4ojojb2rihp6k3ql27tq8m5lc9s.apps.googleusercontent.com'
-	consumer_secret = 'zTvZBSDBFEIf4EovT04cXzjB'
-	
+def oauthLogin():
+	# using http://stackoverflow.com/questions/20248555/list-of-spreadsheets-gdata-oauth2/29157967#29157967 (thanks)
+	from oauth2client.file import Storage
+
 	filename = os.path.join(os.path.expanduser('~'), ".picasawebsync")
-	gd_client.SetOAuthInputParameters(gdata.auth.OAuthSignatureMethod.HMAC_SHA1,consumer_key, consumer_secret=consumer_secret)
-	try:
-		f = open(filename, 'r') 
-		key = f.readline().rstrip()
-		secret = f.readline().rstrip()
-		f.close()
-		oauth_input_params = gdata.auth.OAuthInputParams(gdata.auth.OAuthSignatureMethod.HMAC_SHA1, consumer_key, consumer_secret=consumer_secret)
-		# the token key and secret should be recalled from your database
-		oauth_token = gdata.auth.OAuthToken(key=key, secret=secret, scopes='https://picasaweb.google.com/data/', oauth_input_params=oauth_input_params)
-		gd_client.SetOAuthToken(oauth_token)
-		gd_client.GetUserFeed()
-	except:
-		print 'Unable to use existing certs, so we need to (re)authenticate with google..'
-		request_token = gd_client.FetchOAuthRequestToken()
-		gd_client.SetOAuthToken(request_token)
-		auth_url = gd_client.GenerateOAuthAuthorizationURL()
-		print 'Authorization URL: %s' % auth_url
-		raw_input('Manually go to the above URL and authenticate.'
-				  'Press a key after authorization.')
-		token = gd_client.UpgradeToOAuthAccessToken()
-		print dir(token)
-		f = open(filename, 'w')
-		f.write (token.key+"\n")
-		f.write (token.secret+"\n")
-		f.close()
+	storage = Storage(filename)
+	credentials = storage.get()
+	if credentials is None or credentials.invalid:	
+		flow = client.flow_from_clientsecrets('client_secrets.json',scope='https://picasaweb.google.com/data/',redirect_uri='urn:ietf:wg:oauth:2.0:oob')	
+		auth_uri = flow.step1_get_authorize_url()	
+		print 'Authorization URL: %s' % auth_uri
+		auth_code = raw_input('Enter the auth code: ')
+		credentials = flow.step2_exchange(auth_code)
+		storage.put(credentials)
+	if credentials.access_token_expired:
+    		credentials.refresh(httplib2.Http())
+		
+	gd_client = gd_client = gdata.photos.service.PhotosService(additional_headers={'Authorization' : 'Bearer %s' % credentials.access_token})
+	
+	return gd_client
+
 
 # start of the program
 
 defaultNamingFormat=["{0}", "{1} ({0})"]
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-u","--username", help="Your picassaweb username (leave blank for oauth)")
-parser.add_argument("-p","--password", help="Your picassaweb password")
 parser.add_argument("-d","--directory",	 nargs='+',help="The local directories. The first of these will be used for any downloaded items")
 parser.add_argument("-n","--naming", default=defaultNamingFormat,  nargs='+',help="Expression to convert directory names to web album names. Formed as a ~ seperated list of substitution strings, "
 "so if a sub directory is in the root scanning directory then the first slement will be used, if there is a directory between them the second, etc. If the directory path is longer than the "
@@ -632,15 +626,8 @@ args = parser.parse_args()
 
 chosenFormats = args.format
 
-gd_client = gdata.photos.service.PhotosService(email='default')
+gd_client = oauthLogin()
 
-if args.username:
-	gd_client.email = args.username # Set your Picasaweb e-mail address...
-	gd_client.password = args.password 
-	gd_client.source = 'api-sample-google-com'
-	gd_client.ProgrammaticLogin()
-else:
-	oauthLogin(gd_client)
 verbose=args.verbose
 
 rootDirs = args.directory # set the directory you want to start from
