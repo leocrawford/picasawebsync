@@ -19,7 +19,6 @@ import httplib2
 
 # from apiclient import discovery
 from oauth2client import client
-from gdata.gauth import OAuth2TokenFromCredentials
 from subprocess import call
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
