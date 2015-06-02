@@ -557,8 +557,6 @@ def repeat(function,  description, onFailRethrow):
 					exc_info = e
 			# FIXME - to try and stop 403 token expired
 			time.sleep(6)
-			if args.username:			 
-					gd_client.ProgrammaticLogin()
 			continue
 		else:
 			break
