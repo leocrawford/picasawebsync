@@ -582,7 +582,7 @@ def oauthLogin():
 	if credentials.access_token_expired:
     		credentials.refresh(httplib2.Http())
 		
-	gd_client = gd_client = gdata.photos.service.PhotosService(additional_headers={'Authorization' : 'Bearer %s' % credentials.access_token})
+	gd_client = gdata.photos.service.PhotosService(email='default',additional_headers={'Authorization' : 'Bearer %s' % credentials.access_token})
 	
 	return gd_client
 
