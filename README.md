@@ -102,7 +102,7 @@ Because that doesn't cope well with very deep directory structures the app will 
 As a real example my photos are indexed by year / albumName so I choose to use a mapping of {0} for files under directly a year, but {1} ({0}) for all otehrs which gives me the album name first, then the year in brackets. 
 All extra paths (e.g. photographer or sub-trip location) are simply forgotton.
 
-As will be apparant from the above example the actual substitutions are simple substitutions of the form {x} where x is the position in the directory path (0 is far left) that we should use. 
+As will be apparent from the above example the actual substitutions are simple substitutions of the form {x} where x is the position in the directory path (0 is far left) that we should use. 
 
 For example
 
