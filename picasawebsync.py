@@ -552,8 +552,7 @@ def convertDirToAlbum(formElements, root, name, replace, namingextract):
 supportedImageFormats = frozenset(["image/bmp", "image/gif", "image/jpeg", "image/png"])
 # supportedImageFormats = frozenset(["image/jpeg", "image/png"])
 supportedVideoFormats = frozenset(
-    ["video/3gpp", "video/avi", "video/quicktime", "video/mp4", "video/mpeg", "video/mpeg4", "video/msvideo",
-     "video/x-ms-asf", "video/x-ms-wmv", "video/x-msvideo"])
+    ["video/3gpp", "video/avi", "video/quicktime", "video/mp4", "video/mpeg", "video/mpeg4", "video/msvideo", "video/x-ms-asf", "video/x-ms-wmv", "video/x-msvideo", "video/x-matroska"])
 immutableFolders = frozenset(["Instant Upload","Auto-Backup"])
 
 
