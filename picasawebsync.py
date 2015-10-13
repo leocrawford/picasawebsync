@@ -175,9 +175,10 @@ class Albums:
         webAlbums = gd_client.GetUserFeed(user=owner)
         for webAlbum in webAlbums.entry:
             if int(webAlbum.numphotos.text) == 0:
-                print "Deleting empty album %s" % webAlbum.title.text
-                gd_client.Delete(webAlbum)
-                # @print_timing
+		if not webAlbum.title.text in immutableFolders:
+                	print "Deleting empty album %s" % webAlbum.title.text
+                	gd_client.Delete(webAlbum)
+                	# @print_timing
 
     def scanWebAlbums(self, owner, deletedups, server_excludes):
         # walk the web album finding albums there
@@ -553,6 +554,7 @@ supportedImageFormats = frozenset(["image/bmp", "image/gif", "image/jpeg", "imag
 supportedVideoFormats = frozenset(
     ["video/3gpp", "video/avi", "video/quicktime", "video/mp4", "video/mpeg", "video/mpeg4", "video/msvideo",
      "video/x-ms-asf", "video/x-ms-wmv", "video/x-msvideo"])
+immutableFolders = frozenset(["Instant Upload","Auto-Backup"])
 
 
 class Enum(set):
@@ -638,7 +640,7 @@ def repeat(function,  description, onFailRethrow):
 			return function()
 		except Exception,  e:
 			if exc_info == None:
-					exc_info = e
+				exc_info = e
 			# FIXME - to try and stop 403 token expired
 			time.sleep(6)
 			continue
