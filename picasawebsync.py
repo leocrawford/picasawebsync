@@ -11,10 +11,12 @@ import fnmatch
 import tempfile
 import calendar
 import httplib2
+import threading
 
 # from apiclient import discovery
 from oauth2client import client
 from subprocess import call
+from datetime import timedelta, datetime
 
 from gdata.photos.service import *
 import gdata.media
@@ -665,12 +667,31 @@ def oauthLogin():
 		auth_code = raw_input('Enter the auth code: ')
 		credentials = flow.step2_exchange(auth_code)
 		storage.put(credentials)
-	if credentials.access_token_expired:
-    		credentials.refresh(httplib2.Http())
-		
+	# if credentials.access_token_expired:		
+	
+	return refreshCreds(credentials,0)
+
+
+def refreshCreds(credentials,sleep):
+	print "Starting refreshCreds"
+	time.sleep(sleep)
+	print "Finished sleeping refreshCreds"
+	credentials.refresh(httplib2.Http())	
+
+	now = datetime.utcnow() 
+ 	expires = credentials.token_expiry
+	expires_seconds = (expires-now).seconds 	
+	print ("Expires %s from %s = %s" % (expires,now,expires_seconds) )
+
 	gd_client = gdata.photos.service.PhotosService(email='default',additional_headers={'Authorization' : 'Bearer %s' % credentials.access_token})
 	
+	d = threading.Thread(name='refreshCreds', target=refreshCreds, args=(credentials,expires_seconds) )
+	d.setDaemon(True)
+	d.start()
+	print "About to return refreshCreds"
 	return gd_client
+	
+
 
 # start of the program
 
