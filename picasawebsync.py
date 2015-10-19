@@ -673,22 +673,19 @@ def oauthLogin():
 
 
 def refreshCreds(credentials,sleep):
-	print "Starting refreshCreds"
 	time.sleep(sleep)
-	print "Finished sleeping refreshCreds"
 	credentials.refresh(httplib2.Http())	
 
 	now = datetime.utcnow() 
  	expires = credentials.token_expiry
 	expires_seconds = (expires-now).seconds 	
-	print ("Expires %s from %s = %s" % (expires,now,expires_seconds) )
+	# print ("Expires %s from %s = %s" % (expires,now,expires_seconds) )
 
 	gd_client = gdata.photos.service.PhotosService(email='default',additional_headers={'Authorization' : 'Bearer %s' % credentials.access_token})
 	
-	d = threading.Thread(name='refreshCreds', target=refreshCreds, args=(credentials,expires_seconds) )
+	d = threading.Thread(name='refreshCreds', target=refreshCreds, args=(credentials,expires_seconds - 10) )
 	d.setDaemon(True)
 	d.start()
-	print "About to return refreshCreds"
 	return gd_client
 	
 
