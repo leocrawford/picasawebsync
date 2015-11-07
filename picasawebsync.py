@@ -644,7 +644,9 @@ def repeat(function,  description, onFailRethrow):
 				exc_info = e
 			# FIXME - to try and stop 403 token expired
 			time.sleep(6)
-			gd_client=oauthLogin() 
+			# this should no longer be needed			
+			# gd_client=oauthLogin() 
+
 			continue
 		else:
 			break
