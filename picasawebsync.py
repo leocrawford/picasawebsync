@@ -675,7 +675,8 @@ def oauthLogin():
 
 
 def refreshCreds(credentials,sleep):
-	time.sleep(sleep)
+        global gd_client	
+        time.sleep(sleep)
 	credentials.refresh(httplib2.Http())	
 
 	now = datetime.utcnow() 
