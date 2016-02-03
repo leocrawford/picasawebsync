@@ -21,7 +21,7 @@ from datetime import timedelta, datetime
 from gdata.photos.service import *
 import gdata.media
 import gdata.geo
-import Image
+from PIL import Image
 
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
