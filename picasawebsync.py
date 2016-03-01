@@ -369,6 +369,14 @@ class FileEntry:
             self.gphoto_id = webReference.gphoto_id.text
             self.albumid = webReference.albumid.text
             self.webUrl = webReference.content.src
+            
+            #if video overwrite webUrl : get last (higher resolution) media.content entry url
+            if webReference.media.content:
+                highRescontent = webReference.media.content[-1]
+                if highRescontent.type.startswith('video'):
+                    if highRescontent.url:
+                        self.webUrl = highRescontent.url
+            
             self.remoteHash = webReference.checksum.text
             self.remoteDate = calendar.timegm(
                 time.strptime(re.sub("\.[0-9]{3}Z$", ".000 UTC", webReference.updated.text),
