@@ -39,36 +39,37 @@ Soon to be supported:
 
 ## Installation
 
-1. Install you have python >=2.7 <3 installed (these version numbers are based on some assumptions, so I could be wrong), make sure it has SSL support enabled
+1. Make sure you have python installed - any version between 2.7 to 3 (these version numbers are based on some assumptions, so I could be wrong) along with SSL support enabled.
 2. Install PIL package (text taken from http://gausssum.sourceforge.net/DocBook/ch01s03.html)
     You can get PIL 1.1.7 from here under "Python Imaging Library 1.1.7 Source Kit (all platforms)". This should be untarred into a folder in the usual way, using
     
-    tar zxvf Imaging-1.1.7.tar.gz
+        tar zxvf Imaging-1.1.7.tar.gz
     
     Next, go into the folder created and (as root) install the package as follows: 
     
-    python setup.py install
+        python setup.py install
     
     If you are using Debian Linux, the Python Imaging Library will be downloaded and installed if you issue the following command as root: 
     
-    apt-get install python-imaging python-imaging-tk
+        apt-get install python-imaging python-imaging-tk
+
 3. Add the gdata packages 
 
-    cd /tmp
-    wget https://gdata-python-client.googlecode.com/files/gdata-2.0.17.zip
-    unzip gdata*
-    python setup.py install
+        cd /tmp
+        wget https://gdata-python-client.googlecode.com/files/gdata-2.0.17.zip
+        unzip gdata*
+        python setup.py install
 
     or debian/ubuntu way 
 
-    apt-get install python-gdata
+        apt-get install python-gdata
 
-4. pip install --upgrade oauth2client
+4. `pip install --upgrade oauth2client`
 5. download the latest version from the releases directory
 6. untar it to a temporary directory (tar zxvf <filename> should work for most Linux distros)
 7. (optionally) install it using 
 
-    python setup.py install  (you may need sudo for linux platforms)
+        python setup.py install  (you may need sudo for linux platforms)
 
 If you're able to help with a better installation process please shout
 
