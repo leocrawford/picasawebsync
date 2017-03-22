@@ -1,5 +1,7 @@
 # picasawebsync
 
+** I believe because of the [changes to the API] (https://developers.google.com/picasa-web/docs/3.0/releasenotes) this software will no longer work, and I can not see a practical alternative. I am moving my backups to amazon and closing this project.
+
 This python utility will allow you to sync local directories with picasaweb. I'd appreciate feedback if you find it useful, or find problems. I run it over a 36000+ item collection on a linux box (netgear readynas v2) without problems. 
 
 **NOTE: Only oauth2 is now supported, and I no longer provide my keys for this. You must follow the [instructions here](https://developers.google.com/console/help/new/?hl=en_US#generatingoauth2) to generate a client_secrets.json file which must be in the same directory as picasawebsync.py**
